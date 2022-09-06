@@ -19,6 +19,10 @@
 #import "UIView+React.h"
 #import <React/RCTUIManager.h>
 
+#if TARGET_OS_TV
+#import "RCTTVRemoteHandler.h"
+#endif
+
 @implementation RCTTVView {
   __weak RCTBridge *_bridge;
   UITapGestureRecognizer *_selectRecognizer;
@@ -43,6 +47,10 @@
     self.tvParallaxProperties = defaultTVParallaxProperties;
     motionEffectsAdded = NO;
   }
+    
+#if TARGET_OS_TV
+  self.tvRemoteHandler = [[RCTTVRemoteHandler alloc] initWithView:self];
+#endif
   
   return self;
 }
@@ -446,6 +454,13 @@ RCT_NOT_IMPLEMENTED(-(instancetype)initWithCoder : unused)
   }
   
   self.focusGuide.preferredFocusEnvironments = destinations;
+}
+
+- (void)dealloc
+{
+#if TARGET_OS_TV
+  self.tvRemoteHandler = nil;
+#endif
 }
 
 @end

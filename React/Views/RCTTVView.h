@@ -11,6 +11,8 @@
 #import <React/RCTView.h>
 #import <React/RCTBridge.h>
 
+@class RCTTVRemoteHandler;
+
 //  A RCTView with additional properties and methods for user interaction using the Apple TV focus engine.
 @interface RCTTVView : RCTView
 
@@ -41,6 +43,13 @@
 @property (nonatomic, strong) UIFocusGuide * focusGuideDown;
 @property (nonatomic, strong) UIFocusGuide * focusGuideLeft;
 @property (nonatomic, strong) UIFocusGuide * focusGuideRight;
+
+#if TARGET_OS_TV
+/**
+ * TV remote gesture recognizers
+ */
+@property (nonatomic, strong) RCTTVRemoteHandler *tvRemoteHandler;
+#endif
 
 - (instancetype)initWithBridge:(RCTBridge *)bridge;
 
