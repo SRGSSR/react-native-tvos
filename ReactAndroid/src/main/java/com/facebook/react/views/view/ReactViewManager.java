@@ -10,6 +10,7 @@ package com.facebook.react.views.view;
 import android.annotation.TargetApi;
 import android.graphics.Rect;
 import android.os.Build;
+import android.util.Log;
 import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -264,12 +265,10 @@ public class ReactViewManager extends ReactClippingViewManager<ReactViewGroup> {
     }
   }
 
-  @ReactProp(name = "tvFocusable")
-  public void setTvFocusable(final ReactViewGroup view, boolean focusable) {
-    setFocusable(view, focusable);
-    if (!focusable) {
-      view.setFocusable(false);
-    }
+  @ReactProp(name = "tvHiddenFromFocus")
+  public void setTvHiddenFromFocus(final ReactViewGroup view, boolean tvHiddenFromFocus) {
+    Log.v("leon", "view manager tvHiddenFromFocus: " + tvHiddenFromFocus + " / childCount: " +  view.getChildCount());
+    view.setTvHiddenFromFocus(tvHiddenFromFocus);
   }
 
   @ReactProp(name = ViewProps.OVERFLOW)

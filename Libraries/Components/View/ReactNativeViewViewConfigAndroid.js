@@ -69,6 +69,7 @@ const ReactNativeViewViewConfigAndroid = {
   },
   validAttributes: {
     hasTVPreferredFocus: true,
+    tvHiddenFromFocus: true,
     focusable: true,
     nativeBackgroundAndroid: true,
     nativeForegroundAndroid: true,

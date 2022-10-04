@@ -80,6 +80,7 @@ public class ViewProps {
   public static final String POINTER_EVENTS = "pointerEvents";
 
   // Props that affect more than just layout
+  public static final String TV_HIDDEN_FROM_FOCUS = "tvHiddenFromFocus";
   public static final String ENABLED = "enabled";
   public static final String BACKGROUND_COLOR = "backgroundColor";
   public static final String FOREGROUND_COLOR = "foregroundColor";

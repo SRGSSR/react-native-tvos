@@ -20,11 +20,13 @@ import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.os.Build;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.ViewStructure;
+import android.view.Window;
 import android.view.animation.Animation;
 import android.widget.Toast;
 
@@ -60,6 +62,9 @@ import com.facebook.react.uimanager.common.UIManagerType;
 import com.facebook.react.uimanager.common.ViewUtil;
 import com.facebook.yoga.YogaConstants;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Backing for a React View. Has support for borders, but since borders aren't common, lazy
  * initializes most of the storage needed for them.
@@ -80,6 +85,9 @@ public class ReactViewGroup extends ViewGroup
   /* should only be used in {@link #updateClippingToRect} */
   private static final Rect sHelperRect = new Rect();
   private @NonNull int[] focusDestinations = new int[0];
+  private @NonNull List<View> focusableViews = new ArrayList();
+  private @NonNull List<View> children = new ArrayList();
+  private boolean tvHiddenFromFocus = false;
 
   /**
    * This listener will be set for child views when removeClippedSubview property is enabled. When
@@ -479,7 +487,8 @@ public class ReactViewGroup extends ViewGroup
     } else {
       setChildrenDrawingOrderEnabled(false);
     }
-
+    if(tvHiddenFromFocus) Log.v("leon", "view added: " + child.toString());
+    children.add(child);
     super.addView(child, index, params);
   }
 
@@ -493,7 +502,8 @@ public class ReactViewGroup extends ViewGroup
     } else {
       setChildrenDrawingOrderEnabled(false);
     }
-
+    if(tvHiddenFromFocus) Log.v("leon", "view removed: " + view.toString());
+    children.remove(view);
     super.removeView(view);
   }
 
@@ -792,6 +802,9 @@ public class ReactViewGroup extends ViewGroup
 
   @Override
   protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+    Log.v("leon", "child drawn, ViewGroup: " + this.toString());
+
+    children.add(child);
     boolean drawWithZ =
       child.getElevation() > 0 && ReactFeatureFlags.insertZReorderBarriersOnViewGroupChildren;
 
@@ -1038,7 +1051,35 @@ public class ReactViewGroup extends ViewGroup
     return false;
   }
 
+  private void findFocusableViews(ViewGroup viewGroup) {
+    int childCount = viewGroup.getChildCount();
+    if(tvHiddenFromFocus) Log.v("leon", "findFocusableViews childCount: " + childCount + " / " + children.size());
+    for (int i = 0; i < childCount; i++) {
+      View view = viewGroup.getChildAt(i);
+      if(tvHiddenFromFocus) Log.v("leon", "View focusable: " + view.isFocusable());
+      if(!focusableViews.contains(view)) {
+        focusableViews.add(view);
+      }
+      if(view instanceof ViewGroup) {
+        findFocusableViews((ViewGroup) view);
+      }
+    }
+  }
+
   public void setFocusDestinations(@NonNull int[] focusDestinations) {
     this.focusDestinations = focusDestinations;
+  }
+
+  public void setTvHiddenFromFocus(boolean tvHiddenFromFocus) {
+    this.tvHiddenFromFocus = tvHiddenFromFocus;
+    if(tvHiddenFromFocus) Log.v("leon", "ViewGroup: " + this.toString());
+    if(tvHiddenFromFocus) Log.v("leon", "setTvHiddenFromFocus: " + tvHiddenFromFocus);
+    findFocusableViews(this);
+    if(tvHiddenFromFocus) Log.v("leon", "children size: " + children.size());
+    for(View view : children) {
+      if(tvHiddenFromFocus) Log.v("leon", "View: "+view.toString());
+      view.setEnabled(!tvHiddenFromFocus);
+      view.setFocusable(!tvHiddenFromFocus);
+    }
   }
 }

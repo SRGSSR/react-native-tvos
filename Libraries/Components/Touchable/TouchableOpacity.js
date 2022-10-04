@@ -27,6 +27,7 @@ import * as React from 'react';
 type TVProps = $ReadOnly<{|
   hasTVPreferredFocus?: ?boolean,
   isTVSelectable?: ?boolean,
+  tvHiddenFromFocus?: ?boolean,
   tvParallaxProperties?: ?TVParallaxPropertiesType,
   nextFocusDown?: ?number,
   nextFocusForward?: ?number,
@@ -255,6 +256,7 @@ class TouchableOpacity extends React.Component<Props, State> {
         isTVSelectable={
           this.props.isTVSelectable !== false && this.props.accessible !== false
         }
+        tvHiddenFromFocus={!!this.props.tvHiddenFromFocus}
         tvParallaxProperties={this.props.tvParallaxProperties}
         hitSlop={this.props.hitSlop}
         focusable={

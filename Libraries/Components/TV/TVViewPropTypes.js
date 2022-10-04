@@ -65,6 +65,14 @@ export type TVViewProps = $ReadOnly<{|
   isTVSelectable?: boolean,
 
   /**
+   * *(Android TV only)* When set to true, this view and its children will never
+   * get the focus.
+   *
+   * @platform ios
+   */
+  tvHiddenFromFocus?: boolean,
+
+  /**
    * *(Apple TV only)* May be set to true to force the Apple TV focus engine to move focus to this view.
    *
    * @platform ios
@@ -77,5 +85,4 @@ export type TVViewProps = $ReadOnly<{|
    * @platform ios
    */
   tvParallaxProperties?: TVParallaxPropertiesType,
-
 |}>;
