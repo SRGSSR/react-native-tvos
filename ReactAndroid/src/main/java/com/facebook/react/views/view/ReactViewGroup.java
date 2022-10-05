@@ -1034,6 +1034,7 @@ public class ReactViewGroup extends ViewGroup
 
   @Override
   public boolean requestFocus(int direction, Rect previouslyFocusedRect) {
+    Log.v("RVG", "requestFocus " + toString() + " programmatic:" + this.programmaticRequestFocus + " " + " destinations" + focusDestinations.length);
     if (ReactViewGroup.androidVisibleFocusOnly && !programmaticRequestFocus) {
       if (!isShown()) {
         Log.v("RVG", "no focus for invisible views");

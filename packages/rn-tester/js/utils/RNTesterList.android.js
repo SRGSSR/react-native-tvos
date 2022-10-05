@@ -284,6 +284,10 @@ const APIs: Array<RNTesterModuleInfo> = [
     module: require('../examples/TVFocusGuide/TVFocusEdgeCases'),
   },
   {
+    key: 'TVFocusNoFocusableElement',
+    module: require('../examples/TVFocusGuide/TVFocusNoFocusableElement'),
+  },
+  {
     key: 'VibrationExample',
     category: 'Basic',
     module: require('../examples/Vibration/VibrationExample'),

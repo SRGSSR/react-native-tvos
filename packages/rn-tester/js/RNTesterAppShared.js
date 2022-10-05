@@ -31,9 +31,15 @@ import {
 } from './utils/testerStateUtils';
 import {useAsyncStorageReducer} from './utils/useAsyncStorageReducer';
 import {RNTesterReducer, RNTesterActionsType} from './utils/RNTesterReducer';
-import {RNTesterThemeContext, themes} from './components/RNTesterTheme';
+import {
+  RNTesterTheme,
+  RNTesterThemeContext,
+  themes,
+} from './components/RNTesterTheme';
 import RNTTitleBar from './components/RNTTitleBar';
 import {RNTesterEmptyBookmarksState} from './components/RNTesterEmptyBookmarksState';
+import {useState} from 'react';
+import {RNTesterTabVisibilityToggleContext} from './components/RNTesterTabVisibility';
 
 const APP_STATE_KEY = 'RNTesterAppState.v3';
 
@@ -49,6 +55,7 @@ const RNTesterApp = (): React.Node => {
     APP_STATE_KEY,
   );
   const colorScheme = useColorScheme();
+  const [tabVisibility, setTabVisibility] = useState(true);
 
   const {
     activeModuleKey,
@@ -177,42 +184,48 @@ const RNTesterApp = (): React.Node => {
       : examplesList.bookmarks;
 
   return (
-    <RNTesterThemeContext.Provider value={theme}>
-      <RNTTitleBar
-        title={title}
-        theme={theme}
-        onBack={activeModule ? handleBackPress : null}
-        documentationURL={activeModule?.documentationURL}
-      />
-      <View
-        style={StyleSheet.compose(styles.container, {
-          backgroundColor: theme.GroupedBackgroundColor,
-        })}>
-        {activeModule != null ? (
-          <RNTesterModuleContainer
-            module={activeModule}
-            example={activeModuleExample}
-            onExampleCardPress={handleModuleExampleCardPress}
+    <RNTesterTabVisibilityToggleContext.Provider value={setTabVisibility}>
+      <RNTesterThemeContext.Provider value={theme}>
+        {tabVisibility ? (
+          <RNTTitleBar
+            title={title}
+            theme={theme}
+            onBack={activeModule ? handleBackPress : null}
+            documentationURL={activeModule?.documentationURL}
           />
-        ) : screen === Screens.BOOKMARKS &&
-          examplesList.bookmarks.length === 0 ? (
-          <RNTesterEmptyBookmarksState />
-        ) : (
-          <RNTesterModuleList
-            sections={activeExampleList}
-            toggleBookmark={toggleBookmark}
-            handleModuleCardPress={handleModuleCardPress}
-          />
-        )}
-      </View>
-      <View style={Platform.isTV ? styles.tvNavBar : styles.bottomNavbar}>
-        <RNTesterNavBar
-          screen={screen || Screens.COMPONENTS}
-          isExamplePageOpen={!!activeModule}
-          handleNavBarPress={handleNavBarPress}
-        />
-      </View>
-    </RNTesterThemeContext.Provider>
+        ) : undefined}
+        <View
+          style={StyleSheet.compose(styles.container, {
+            backgroundColor: theme.GroupedBackgroundColor,
+          })}>
+          {activeModule != null ? (
+            <RNTesterModuleContainer
+              module={activeModule}
+              example={activeModuleExample}
+              onExampleCardPress={handleModuleExampleCardPress}
+            />
+          ) : screen === Screens.BOOKMARKS &&
+            examplesList.bookmarks.length === 0 ? (
+            <RNTesterEmptyBookmarksState />
+          ) : (
+            <RNTesterModuleList
+              sections={activeExampleList}
+              toggleBookmark={toggleBookmark}
+              handleModuleCardPress={handleModuleCardPress}
+            />
+          )}
+        </View>
+        {tabVisibility ? (
+          <View style={Platform.isTV ? styles.tvNavBar : styles.bottomNavbar}>
+            <RNTesterNavBar
+              screen={screen || Screens.COMPONENTS}
+              isExamplePageOpen={!!activeModule}
+              handleNavBarPress={handleNavBarPress}
+            />
+          </View>
+        ) : undefined}
+      </RNTesterThemeContext.Provider>
+    </RNTesterTabVisibilityToggleContext.Provider>
   );
 };
 

@@ -34,12 +34,10 @@ exports.examples = [
   },
 ];
 
-const Text = ({style, children, tvHiddenFromFocus}) => {
+const Text = ({style, children}) => {
   const theme = useRNTesterTheme();
   return (
-    <RNText
-      style={[styles.text, {color: theme.LabelColor}, style]}
-      tvHiddenFromFocus={tvHiddenFromFocus}>
+    <RNText style={[styles.text, {color: theme.LabelColor}, style]}>
       {children}
     </RNText>
   );
