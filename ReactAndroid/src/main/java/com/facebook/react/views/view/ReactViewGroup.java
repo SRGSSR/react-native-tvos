@@ -1170,9 +1170,13 @@ public class ReactViewGroup extends ViewGroup
 
       View destination = findDestinationView();
 
-      if (destination != null && requestFocusViewOrAncestor(destination)) {
-        log("focused ancestor");
-        return true;
+      if (destination != null) {
+        log("trying view" + destination + " wasFocusable:" + destination.isFocusable());
+        destination.setFocusable(true);
+        if (requestFocusViewOrAncestor(destination)) {
+          log("focused destination view (or ancestor)");
+          return true;
+        }
       }
 
       for (int i = 0; i < getChildCount(); i++) {
