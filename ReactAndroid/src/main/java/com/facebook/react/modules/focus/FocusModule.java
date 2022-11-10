@@ -25,10 +25,11 @@ import com.facebook.react.bridge.ReactMethod;
 public class FocusModule extends ReactContextBaseJavaModule {
   public static final String NAME = "FocusModule";
 
-  public static final String ON_CHANGE = "FocusDebugger.change";
+  public static final String ON_CHANGE = "FocusModule.change";
 
-  public static boolean enabled = false;
+  public static boolean enabled = true;
   public static boolean log = false;
+  public static boolean visualDebugger = false;
 
   /**
    */
@@ -43,6 +44,12 @@ public class FocusModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void setDebugger(boolean enabled) {
+    FocusModule.visualDebugger = enabled;
+    LocalBroadcastManager.getInstance(getReactApplicationContext()).sendBroadcast(new Intent(ON_CHANGE));
+  }
+
+  @ReactMethod
+  public void setEnabled(boolean enabled) {
     FocusModule.enabled = enabled;
     LocalBroadcastManager.getInstance(getReactApplicationContext()).sendBroadcast(new Intent(ON_CHANGE));
   }
