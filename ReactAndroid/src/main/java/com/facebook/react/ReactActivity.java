@@ -19,6 +19,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,14 +33,17 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.facebook.react.modules.core.DefaultHardwareBackBtnHandler;
 import com.facebook.react.modules.core.PermissionAwareActivity;
 import com.facebook.react.modules.core.PermissionListener;
-import com.facebook.react.views.view.ReactViewGroup;
 
 import java.util.ArrayList;
+import java.util.WeakHashMap;
+
 import com.facebook.react.modules.focus.FocusModule;
 
-/** Base Activity for React Native applications. */
+/**
+ * Base Activity for React Native applications.
+ */
 public abstract class ReactActivity extends AppCompatActivity
-    implements DefaultHardwareBackBtnHandler, PermissionAwareActivity {
+  implements DefaultHardwareBackBtnHandler, PermissionAwareActivity {
 
   private final ReactActivityDelegate mDelegate;
 
@@ -51,15 +55,18 @@ public abstract class ReactActivity extends AppCompatActivity
    * Returns the name of the main component registered from JavaScript. This is used to schedule
    * rendering of the component. e.g. "MoviesApp"
    */
-  protected @Nullable String getMainComponentName() {
+  protected @Nullable
+  String getMainComponentName() {
     return null;
   }
 
-  private Handler debugHandler;
-  private static int focusMonitorInterval = 500;
+  private Handler periodicHandler;
+  private static int focusMonitorInterval = 200;
   private FocusView focusView;
 
-  /** Called at construction time, override if you have a custom delegate implementation. */
+  /**
+   * Called at construction time, override if you have a custom delegate implementation.
+   */
   protected ReactActivityDelegate createReactActivityDelegate() {
     return new ReactActivityDelegate(this, getMainComponentName());
   }
@@ -68,7 +75,7 @@ public abstract class ReactActivity extends AppCompatActivity
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     mDelegate.onCreate(savedInstanceState);
-    debugHandler = new Handler();
+    periodicHandler = new Handler();
   }
 
   @Override
@@ -76,6 +83,8 @@ public abstract class ReactActivity extends AppCompatActivity
     super.onPause();
     mDelegate.onPause();
     stopFocusMonitor();
+    stopVirtualDebugger();
+    LocalBroadcastManager.getInstance(this).unregisterReceiver(mNotificationReceiver);
   }
 
   @Override
@@ -84,6 +93,9 @@ public abstract class ReactActivity extends AppCompatActivity
     mDelegate.onResume();
     if (FocusModule.enabled) {
       startFocusMonitor();
+    }
+    if (FocusModule.visualDebugger) {
+      startVisualDebugger();
     }
     LocalBroadcastManager.getInstance(this).registerReceiver(mNotificationReceiver, new IntentFilter(FocusModule.ON_CHANGE));
   }
@@ -97,6 +109,11 @@ public abstract class ReactActivity extends AppCompatActivity
       } else {
         stopFocusMonitor();
       }
+      if (FocusModule.visualDebugger) {
+        startVisualDebugger();
+      } else {
+        stopVirtualDebugger();
+      }
     }
   };
 
@@ -104,8 +121,16 @@ public abstract class ReactActivity extends AppCompatActivity
     focusMonitor.run();
   }
 
+  private void startVisualDebugger() {
+    virtualDebugger.run();
+  }
+
   private void stopFocusMonitor() {
-    debugHandler.removeCallbacks(focusMonitor);
+    periodicHandler.removeCallbacks(focusMonitor);
+  }
+
+  private void stopVirtualDebugger() {
+    periodicHandler.removeCallbacks(virtualDebugger);
     if (focusView != null) {
       ViewParent parent = focusView.getParent();
       if (parent instanceof ViewGroup) {
@@ -118,15 +143,71 @@ public abstract class ReactActivity extends AppCompatActivity
   private Runnable focusMonitor = new Runnable() {
     private View previousFocus;
 
+    int focusViewCount = 0;
+    final WeakHashMap<View, Integer> lastFocusedViews = new WeakHashMap<>();
+
+    @Override
+    public void run() {
+      try {
+        View currentFocus = getCurrentFocus();
+        if (currentFocus != null) {
+          if (previousFocus != currentFocus) {
+            saveFocus(currentFocus);
+            previousFocus = currentFocus;
+          }
+        } else {
+          autoRestoreFocus();
+        }
+      } finally {
+        periodicHandler.removeCallbacks(focusMonitor);
+        periodicHandler.postDelayed(focusMonitor, focusMonitorInterval);
+      }
+    }
+
+    private void saveFocus(View v) {
+      lastFocusedViews.put(v, focusViewCount++);
+    }
+
+    private boolean autoRestoreFocus() {
+      final boolean found[] = new boolean[1];
+      found[0] = false;
+      log("autoRestoreFocus: " + focusViewCount + " totalViewCount: " + lastFocusedViews.size());
+      for (int i = focusViewCount; i > 0; i--) {
+        if (lastFocusedViews.containsValue(i)) {
+          final int focusViewIdx = i;
+          lastFocusedViews.forEach((View view, Integer idx) -> {
+            if (!found[0] && idx == focusViewIdx) {
+              log("autoRestoreFocus trying to focus " + view + " attached:" + view.isAttachedToWindow());
+              if (view.isAttachedToWindow() && view.requestFocus()) {
+                log("autoRestoreFocus focused " + view);
+                found[0] = true;
+              }
+            }
+          });
+          if (found[0]) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+  };
+
+  private Runnable virtualDebugger = new Runnable() {
+    private View previousFocus;
+
     @Override
     public void run() {
       try {
         highlightFocus();
       } finally {
-        debugHandler.removeCallbacks(focusMonitor);
-        debugHandler.postDelayed(focusMonitor, focusMonitorInterval);
+        periodicHandler.removeCallbacks(virtualDebugger);
+        periodicHandler.postDelayed(virtualDebugger, focusMonitorInterval);
       }
     }
+
+    int focusViewCount = 0;
+    final WeakHashMap<View, Integer> lastFocusedViews = new WeakHashMap<>();
 
     private void highlightFocus() {
       if (focusView == null) {
@@ -226,13 +307,13 @@ public abstract class ReactActivity extends AppCompatActivity
 
   @Override
   public void requestPermissions(
-      String[] permissions, int requestCode, PermissionListener listener) {
+    String[] permissions, int requestCode, PermissionListener listener) {
     mDelegate.requestPermissions(permissions, requestCode, listener);
   }
 
   @Override
   public void onRequestPermissionsResult(
-      int requestCode, String[] permissions, int[] grantResults) {
+    int requestCode, String[] permissions, int[] grantResults) {
     mDelegate.onRequestPermissionsResult(requestCode, permissions, grantResults);
   }
 
@@ -270,7 +351,7 @@ public abstract class ReactActivity extends AppCompatActivity
     Paint paintBorder = new Paint();
     Paint paintOutOfScreen = new Paint();
     private Paint paintText = new Paint();
-    Rect rect = new Rect(0,0,0,0);
+    Rect rect = new Rect(0, 0, 0, 0);
     ArrayList<Rect> focusableRects = new ArrayList<Rect>();
 
     public FocusView(Context context) {
@@ -292,7 +373,7 @@ public abstract class ReactActivity extends AppCompatActivity
       paintFocusable.setStyle(Paint.Style.STROKE);
       paintFocusable.setColor(Color.RED);
       paintFocusable.setStrokeWidth(2);
-      paintFocusable.setPathEffect(new DashPathEffect(new float[] {2f,10f}, 0f));
+      paintFocusable.setPathEffect(new DashPathEffect(new float[]{2f, 10f}, 0f));
     }
 
     public void onDraw(Canvas canvas) {
@@ -329,6 +410,12 @@ public abstract class ReactActivity extends AppCompatActivity
 
     public Rect getRect() {
       return rect;
+    }
+  }
+
+  private void log(final String log) {
+    if (FocusModule.log) {
+      Log.v("RVM", log);
     }
   }
 }
