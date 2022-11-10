@@ -12,6 +12,8 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.facebook.react.bridge.Dynamic;
@@ -71,6 +73,11 @@ public class ReactViewManager extends ReactClippingViewManager<ReactViewGroup> {
       view.requestFocus();
       view.setProgrammaticRequestFocus(false);
     }
+  }
+
+  @ReactProp(name = "isFocusGuide")
+  public void setIsFocusGuide(ReactViewGroup view, boolean isFocusGuide) {
+    view.setIsFocusGuide(isFocusGuide);
   }
 
   @ReactProp(name = "nextFocusDown", defaultInt = View.NO_ID)

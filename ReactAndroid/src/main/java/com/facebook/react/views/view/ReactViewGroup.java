@@ -62,6 +62,8 @@ import com.facebook.react.uimanager.common.ViewUtil;
 import com.facebook.yoga.YogaConstants;
 import com.facebook.react.modules.focus.FocusModule;
 
+import java.util.ArrayList;
+
 /**
  * Backing for a React View. Has support for borders, but since borders aren't common, lazy
  * initializes most of the storage needed for them.
@@ -94,6 +96,9 @@ public class ReactViewGroup extends ViewGroup
   private boolean tvSelectable = false;
   private float previousAlpha = -1; // force first propagation
   private View inRequestFocus = null;
+
+  private boolean isFocusGuide = false;
+  final ArrayList<ViewGroup> focusGuideFocusedChildren = new ArrayList<ViewGroup>();
 
   /**
    * This listener will be set for child views when removeClippedSubview property is enabled. When
@@ -819,6 +824,36 @@ public class ReactViewGroup extends ViewGroup
     }
   }
 
+  public void blockFocusOnDescendants(boolean block) {
+    if(!isFocusGuide) return;
+    if(block && focusGuideFocusedChildren.size() == 0) {
+      this.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+    } else {
+      this.setDescendantFocusability(ViewGroup.FOCUS_BEFORE_DESCENDANTS);
+    }
+  }
+
+  public void setIsFocusGuide(boolean isFocusGuide) {
+    blockFocusOnDescendants(isFocusGuide);
+    this.isFocusGuide = isFocusGuide;
+  }
+
+  public void addFocusGuideFocusedChildren(ViewGroup view) {
+   if(isFocusGuide) {
+     focusGuideFocusedChildren.add(view);
+     blockFocusOnDescendants(false);
+   }
+  }
+
+  public void removeFocusGuideFocusedChildren(ViewGroup view) {
+    if(isFocusGuide) {
+      int index = focusGuideFocusedChildren.indexOf(view);
+      if(index == -1) return;
+      focusGuideFocusedChildren.remove(index);
+      blockFocusOnDescendants(true);
+    }
+  }
+
   public void updateThisAndChildrenFocusability() {
     updateTreeFocusability(getAncestorsAlpha(), this);
   }
@@ -863,14 +898,10 @@ public class ReactViewGroup extends ViewGroup
       || this.focusDestinations.length > 0;
     setFocusable(focusable);
     if (FocusModule.log) {
-      log(
-        focusable + " <- " + "tvSelectable: " + this.tvSelectable
-          + " alpha: " + alpha
-          + " tvPreferred: " + tvPreferredFocus
-          + " rnAccessible: " + this.rnAccessible
-          + " accessLabel: " + (this.getTag(R.id.accessibility_label) != null)
-          + " destinations: " + this.focusDestinations.length
-          + " " + toString());
+
+
+
+
     }
   }
 
@@ -1133,7 +1164,22 @@ public class ReactViewGroup extends ViewGroup
   }
 
   @Override
-  public boolean requestFocus(int direction, Rect previouslyFocusedRect) {
+  protected void onFocusChanged(boolean gainFocus, int direction, @Nullable Rect previouslyFocusedRect) {
+    super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
+    ViewParent parent = this.getParent();
+    while (parent != null) {
+      if (parent instanceof ReactViewGroup) {
+        ReactViewGroup v = (ReactViewGroup) parent;
+        if(gainFocus) v.addFocusGuideFocusedChildren(this);
+        else v.removeFocusGuideFocusedChildren(this);
+        parent = v.getParent();
+      } else {
+        parent = null;
+      }
+    }
+  }
+
+  public boolean willGetFocus(int direction, Rect previouslyFocusedRect) {
     if (this.inRequestFocus == this) {
       log("self focus recursion " + toString());
       return false;
@@ -1164,8 +1210,10 @@ public class ReactViewGroup extends ViewGroup
         return false;
       }
 
-      if (focusDestinations.length == 0) {
-        return super.requestFocus(direction, previouslyFocusedRect);
+      if (this.focusDestinations.length == 0) {
+        boolean res = super.requestFocus(direction, previouslyFocusedRect);
+        log("no destinations, trying to focus self" + this + " / res: " + res);
+        return res;
       }
 
       View destination = findDestinationView();
@@ -1189,6 +1237,14 @@ public class ReactViewGroup extends ViewGroup
     } finally {
       this.inRequestFocus = null;
     }
+  }
+
+  @Override
+  public boolean requestFocus(int direction, Rect previouslyFocusedRect) {
+    blockFocusOnDescendants(false);
+    boolean focus = willGetFocus(direction, previouslyFocusedRect);
+    blockFocusOnDescendants(true);
+    return focus;
   }
 
   public void setFocusDestinations(@NonNull int[] focusDestinations) {

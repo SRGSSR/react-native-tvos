@@ -104,6 +104,7 @@ const FocusGuideViewAndroidTV = (props: TVFocusGuideViewProps) => {
     <ReactNative.View
       style={props.style}
       focusable={props.focusable ?? true}
+      isFocusGuide={true}
       destinations={nativeDestinations}>
       {props.children}
     </ReactNative.View>
