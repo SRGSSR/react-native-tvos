@@ -825,8 +825,8 @@ public class ReactViewGroup extends ViewGroup
   }
 
   public void blockFocusOnDescendants(boolean block) {
-    if(!isFocusGuide) return;
-    if(block && focusGuideFocusedChildren.size() == 0) {
+    if (!isFocusGuide) return;
+    if (block && focusGuideFocusedChildren.size() == 0) {
       this.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
     } else {
       this.setDescendantFocusability(ViewGroup.FOCUS_BEFORE_DESCENDANTS);
@@ -839,16 +839,16 @@ public class ReactViewGroup extends ViewGroup
   }
 
   public void addFocusGuideFocusedChildren(ViewGroup view) {
-   if(isFocusGuide) {
-     focusGuideFocusedChildren.add(view);
-     blockFocusOnDescendants(false);
-   }
+    if (isFocusGuide) {
+      focusGuideFocusedChildren.add(view);
+      blockFocusOnDescendants(false);
+    }
   }
 
   public void removeFocusGuideFocusedChildren(ViewGroup view) {
-    if(isFocusGuide) {
+    if (isFocusGuide) {
       int index = focusGuideFocusedChildren.indexOf(view);
-      if(index == -1) return;
+      if (index == -1) return;
       focusGuideFocusedChildren.remove(index);
       blockFocusOnDescendants(true);
     }
@@ -894,14 +894,18 @@ public class ReactViewGroup extends ViewGroup
   public void updateFocusability(float alpha) {
     boolean focusable =
       (this.tvSelectable && ((alpha > 0.001) || this.tvPreferredFocus))
-      || (this.rnAccessible && (this.getTag(R.id.accessibility_label) != null))
-      || this.focusDestinations.length > 0;
+        || (this.rnAccessible && (this.getTag(R.id.accessibility_label) != null))
+        || this.focusDestinations.length > 0;
     setFocusable(focusable);
     if (FocusModule.log) {
-
-
-
-
+      log(
+        focusable + " <- " + "tvSelectable: " + this.tvSelectable
+          + " alpha: " + alpha
+          + " tvPreferred: " + tvPreferredFocus
+          + " rnAccessible: " + this.rnAccessible
+          + " accessLabel: " + (this.getTag(R.id.accessibility_label) != null)
+          + " destinations: " + this.focusDestinations.length
+          + " " + toString());
     }
   }
 
@@ -1170,7 +1174,7 @@ public class ReactViewGroup extends ViewGroup
     while (parent != null) {
       if (parent instanceof ReactViewGroup) {
         ReactViewGroup v = (ReactViewGroup) parent;
-        if(gainFocus) v.addFocusGuideFocusedChildren(this);
+        if (gainFocus) v.addFocusGuideFocusedChildren(this);
         else v.removeFocusGuideFocusedChildren(this);
         parent = v.getParent();
       } else {
@@ -1211,9 +1215,7 @@ public class ReactViewGroup extends ViewGroup
       }
 
       if (this.focusDestinations.length == 0) {
-        boolean res = super.requestFocus(direction, previouslyFocusedRect);
-        log("no destinations, trying to focus self" + this + " / res: " + res);
-        return res;
+        return super.requestFocus(direction, previouslyFocusedRect);
       }
 
       View destination = findDestinationView();
