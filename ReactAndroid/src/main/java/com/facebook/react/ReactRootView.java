@@ -12,6 +12,8 @@ import static com.facebook.react.uimanager.common.UIManagerType.DEFAULT;
 import static com.facebook.react.uimanager.common.UIManagerType.FABRIC;
 import static com.facebook.systrace.Systrace.TRACE_TAG_REACT_JAVA_BRIDGE;
 
+import android.app.UiModeManager;
+import android.content.res.Configuration;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Point;
@@ -20,6 +22,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.DisplayCutout;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -108,6 +111,7 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
   private int mLastOffsetY = Integer.MIN_VALUE;
   private @UIManagerType int mUIManagerType = DEFAULT;
   private final AtomicInteger mState = new AtomicInteger(STATE_STOPPED);
+  private boolean isTVDevice = false;
 
   public ReactRootView(Context context) {
     super(context);
@@ -125,6 +129,8 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
   }
 
   private void init() {
+    UiModeManager uiModeManager = (UiModeManager) getContext().getSystemService(Context.UI_MODE_SERVICE);
+    isTVDevice = uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
     setClipChildren(false);
   }
 
@@ -805,6 +811,7 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
 
     private int mKeyboardHeight = 0;
     private int mDeviceRotation = 0;
+    private boolean mIsTVKeyboardOpen = false;
 
     /* package */ CustomGlobalLayoutListener() {
       DisplayMetricsHolder.initDisplayMetricsIfNotInitialized(getContext().getApplicationContext());
@@ -841,9 +848,21 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
               - mVisibleViewArea.bottom
               + notchHeight;
 
+      boolean isTVKeyboardOpen = false;
+      if (isTVDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        WindowInsets insets = getRootView().getRootWindowInsets();
+        if (insets != null) {
+          isTVKeyboardOpen = insets.isVisible(WindowInsets.Type.ime());
+        }
+      }
+      boolean hasTVKeyboardOpenedOrClosed = isTVKeyboardOpen != mIsTVKeyboardOpen;
+      boolean isTVKeyboardNowOpen = hasTVKeyboardOpenedOrClosed && isTVKeyboardOpen;
+      boolean isTVKeyboardNowClosed = hasTVKeyboardOpenedOrClosed && !isTVKeyboardOpen;
+      mIsTVKeyboardOpen = isTVKeyboardOpen;
+
       boolean isKeyboardShowingOrKeyboardHeightChanged =
-          mKeyboardHeight != heightDiff && heightDiff > mMinKeyboardHeightDetected;
-      if (isKeyboardShowingOrKeyboardHeightChanged) {
+        mKeyboardHeight != heightDiff && heightDiff > mMinKeyboardHeightDetected;
+      if (isKeyboardShowingOrKeyboardHeightChanged || isTVKeyboardNowOpen) {
         mKeyboardHeight = heightDiff;
         sendEvent(
             "keyboardDidShow",
@@ -856,7 +875,7 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
       }
 
       boolean isKeyboardHidden = mKeyboardHeight != 0 && heightDiff <= mMinKeyboardHeightDetected;
-      if (isKeyboardHidden) {
+      if (isKeyboardHidden || isTVKeyboardNowClosed) {
         mKeyboardHeight = 0;
         sendEvent(
             "keyboardDidHide",
