@@ -111,6 +111,7 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
   private int mLastOffsetY = Integer.MIN_VALUE;
   private @UIManagerType int mUIManagerType = DEFAULT;
   private final AtomicInteger mState = new AtomicInteger(STATE_STOPPED);
+  public static boolean isTVDevice = false;
 
   public ReactRootView(Context context) {
     super(context);
@@ -128,6 +129,8 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
   }
 
   private void init() {
+    UiModeManager uiModeManager = (UiModeManager) getContext().getSystemService(Context.UI_MODE_SERVICE);
+    isTVDevice = uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
     setClipChildren(false);
   }
 
@@ -816,11 +819,6 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
       mMinKeyboardHeightDetected = (int) PixelUtil.toPixelFromDIP(60);
     }
 
-    private boolean isTVDevice() {
-      UiModeManager uiModeManager = (UiModeManager) getContext().getSystemService(Context.UI_MODE_SERVICE);
-      return uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
-    }
-
     @Override
     public void onGlobalLayout() {
       if (mReactInstanceManager == null
@@ -851,7 +849,7 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
               + notchHeight;
 
       boolean isTVKeyboardOpen = false;
-      if (isTVDevice() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      if (ReactRootView.isTVDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         WindowInsets insets = getRootView().getRootWindowInsets();
         if (insets != null) {
           isTVKeyboardOpen = insets.isVisible(WindowInsets.Type.ime());
