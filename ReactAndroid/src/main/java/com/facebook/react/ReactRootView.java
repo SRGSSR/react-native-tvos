@@ -111,7 +111,7 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
   private int mLastOffsetY = Integer.MIN_VALUE;
   private @UIManagerType int mUIManagerType = DEFAULT;
   private final AtomicInteger mState = new AtomicInteger(STATE_STOPPED);
-  public static boolean isTVDevice = false;
+  private boolean isTVDevice = false;
 
   public ReactRootView(Context context) {
     super(context);
@@ -849,7 +849,7 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
               + notchHeight;
 
       boolean isTVKeyboardOpen = false;
-      if (ReactRootView.isTVDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      if (isTVDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         WindowInsets insets = getRootView().getRootWindowInsets();
         if (insets != null) {
           isTVKeyboardOpen = insets.isVisible(WindowInsets.Type.ime());
