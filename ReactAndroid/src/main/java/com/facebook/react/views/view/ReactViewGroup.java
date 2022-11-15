@@ -1207,7 +1207,6 @@ public class ReactViewGroup extends ViewGroup
   @Override
   public void getFocusedRect(Rect r) {
     super.getFocusedRect(r);
-//    log("focusedRect " + r);
     if (FocusModule.useParentDimension) {
       ViewParent parent = getParent();
       while (parent != null) {
@@ -1228,7 +1227,7 @@ public class ReactViewGroup extends ViewGroup
                 r.bottom = parentRect.bottom;
                 break;
             }
-            log("applying parent focusedRect " + r);
+            log("Modifying focusedRect with parent  " + r + " ( " + currentFocusSearchDirection);
             return;
           }
         }
