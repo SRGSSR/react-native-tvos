@@ -1196,12 +1196,10 @@ public class ReactViewGroup extends ViewGroup
     switch (direction) {
       case FOCUS_DOWN:
       case FOCUS_UP:
-        return (b.left >= a.left && b.left <= a.right)
-          || (b.right >= a.left && b.right <= a.right);
+        return b.left <= a.right && a.left <= b.right;
       case FOCUS_LEFT:
       case FOCUS_RIGHT:
-        return (b.top >= a.top && b.top <= a.bottom)
-          || (b.bottom >= a.top && b.bottom <= a.bottom);
+        return b.top <= a.bottom && a.top <= a.bottom;
     }
     return true;
   }
