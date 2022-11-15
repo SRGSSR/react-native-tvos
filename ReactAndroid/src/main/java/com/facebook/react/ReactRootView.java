@@ -24,6 +24,7 @@ import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.DisplayCutout;
+import android.view.FocusFinder;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.Surface;
@@ -291,6 +292,28 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
     }
     mAndroidHWInputDeviceHelper.clearFocus(mReactInstanceManager.getCurrentReactContext());
     super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
+  }
+
+  static Rect tempFocusSearchRect = new Rect();
+  static Rect tempWindowRect = new Rect();
+  @Override
+  public View focusSearch(View focused, int direction) {
+    focused.getFocusedRect(tempFocusSearchRect);
+    getWindowVisibleDisplayFrame(tempWindowRect);
+    switch (direction) {
+      case FOCUS_DOWN:
+      case FOCUS_UP:
+        tempFocusSearchRect.right = tempWindowRect.right;
+        tempFocusSearchRect.left = tempWindowRect.left;
+        break;
+      case FOCUS_LEFT:
+      case FOCUS_RIGHT:
+        tempFocusSearchRect.top = tempWindowRect.top;
+        tempFocusSearchRect.bottom = tempWindowRect.bottom;
+        break;
+    }
+    Log.w("RRV", "focusSearch " + focused + " " + direction + " " + tempFocusSearchRect);
+    return FocusFinder.getInstance().findNextFocus(this, focused, direction);
   }
 
   @Override

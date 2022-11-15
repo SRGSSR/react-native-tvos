@@ -859,8 +859,8 @@ public class ReactViewGroup extends ViewGroup
   public void updateFocusability(float alpha) {
     boolean focusable =
       (this.tvSelectable && ((alpha > 0.001) || this.tvPreferredFocus))
-      || (this.rnAccessible && (this.getTag(R.id.accessibility_label) != null))
-      || this.focusDestinations.length > 0;
+        || (this.rnAccessible && (this.getTag(R.id.accessibility_label) != null))
+        || this.focusDestinations.length > 0;
     setFocusable(focusable);
     if (FocusModule.log) {
       log(
@@ -1130,6 +1130,81 @@ public class ReactViewGroup extends ViewGroup
 
   public void setProgrammaticRequestFocus(boolean pRF) {
     this.programmaticRequestFocus = pRF;
+  }
+
+  @Override
+  public View focusSearch(int direction) {
+    log("focusSearch(" + direction + ")");
+    return super.focusSearch(direction);
+  }
+
+  static int currentFocusSearchDirection = 0;
+  static Rect tempRect1 = new Rect();
+  static Rect tempRect2 = new Rect();
+
+  @Override
+  public View focusSearch(View focused, int direction) {
+    currentFocusSearchDirection = direction;
+    log("focusSearch(" + focused + ", " + direction + ")");
+    View searchResult = super.focusSearch(focused, direction);
+    if (searchResult == null) {
+      return null;
+    }
+    Rect a = tempRect1;
+    Rect b = tempRect2;
+    this.getGlobalVisibleRect(a);
+    searchResult.getGlobalVisibleRect(b);
+    boolean aligned;
+    switch (direction) {
+      case FOCUS_DOWN:
+      case FOCUS_UP:
+        aligned = (b.left >= a.left && b.left <= a.right)
+          || (b.right >= a.left && b.right <= a.right);
+        break;
+      case FOCUS_LEFT:
+      case FOCUS_RIGHT:
+        aligned = (b.top >= a.top && b.top <= a.bottom)
+          || (b.bottom >= a.top && b.bottom <= a.bottom);
+        break;
+      default:
+        aligned = true;
+    }
+    if (!aligned) {
+      log("focus search result not aligned");
+      return null;
+    }
+    return searchResult;
+  }
+
+  @Override
+  public void getFocusedRect(Rect r) {
+    super.getFocusedRect(r);
+    log("focusedRect " + r);
+    ViewParent parent = getParent();
+    while (parent != null) {
+      if (parent instanceof ReactViewGroup) {
+        if (((ReactViewGroup) parent).focusDestinations.length > 0) {
+          Rect parentRect = ReactViewGroup.tempRect1;
+          ((ReactViewGroup) parent).getFocusedRect(parentRect);
+          ((ReactViewGroup) parent).offsetRectIntoDescendantCoords(this, parentRect);
+          switch (currentFocusSearchDirection) {
+            case FOCUS_DOWN:
+            case FOCUS_UP:
+              r.right = parentRect.right;
+              r.left = parentRect.left;
+              break;
+            case FOCUS_LEFT:
+            case FOCUS_RIGHT:
+              r.top = parentRect.top;
+              r.bottom = parentRect.bottom;
+              break;
+          }
+          log("applying parent focusedRect " + r);
+          return;
+        }
+      }
+      parent = parent.getParent();
+    }
   }
 
   @Override
