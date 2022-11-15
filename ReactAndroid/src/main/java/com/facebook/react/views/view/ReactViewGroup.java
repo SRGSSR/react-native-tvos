@@ -1146,64 +1146,96 @@ public class ReactViewGroup extends ViewGroup
   public View focusSearch(View focused, int direction) {
     currentFocusSearchDirection = direction;
     log("focusSearch(" + focused + ", " + direction + ")");
+
     View searchResult = super.focusSearch(focused, direction);
     if (searchResult == null) {
       return null;
     }
+
+    if (FocusModule.focusSearchReturnsParentFocusGuide) {
+      View targetParent = findParentFocusGuide(searchResult);
+      if (targetParent != null) {
+        View currentParent = findParentFocusGuide(focused);
+        if (currentParent != targetParent) {
+          return targetParent;
+        }
+      }
+    }
+
+    if (!alignCheck(direction, searchResult)) {
+      log("focus Search not aligned");
+      if (FocusModule.alignCheck) {
+        return null;
+      }
+    }
+
+    return searchResult;
+  }
+
+  @Nullable
+  private View findParentFocusGuide(View searchResult) {
+    ViewParent parent = searchResult.getParent();
+    while (parent != null) {
+      if (parent instanceof ReactViewGroup) {
+        boolean focusGuideWithDescendants = ((ReactViewGroup) parent).focusDestinations.length > 0;
+        if (focusGuideWithDescendants) {
+          log("focusSearch -> parent focusGuide: " + parent);
+          return (View) parent;
+        }
+      }
+      parent = parent.getParent();
+    }
+    return null;
+  }
+
+  private boolean alignCheck(int direction, View searchResult) {
     Rect a = tempRect1;
     Rect b = tempRect2;
     this.getGlobalVisibleRect(a);
     searchResult.getGlobalVisibleRect(b);
-    boolean aligned;
     switch (direction) {
       case FOCUS_DOWN:
       case FOCUS_UP:
-        aligned = (b.left >= a.left && b.left <= a.right)
+        return (b.left >= a.left && b.left <= a.right)
           || (b.right >= a.left && b.right <= a.right);
-        break;
       case FOCUS_LEFT:
       case FOCUS_RIGHT:
-        aligned = (b.top >= a.top && b.top <= a.bottom)
+        return (b.top >= a.top && b.top <= a.bottom)
           || (b.bottom >= a.top && b.bottom <= a.bottom);
-        break;
-      default:
-        aligned = true;
     }
-    if (!aligned) {
-      log("focus search result not aligned");
-      return null;
-    }
-    return searchResult;
+    return true;
   }
 
   @Override
   public void getFocusedRect(Rect r) {
     super.getFocusedRect(r);
-    log("focusedRect " + r);
-    ViewParent parent = getParent();
-    while (parent != null) {
-      if (parent instanceof ReactViewGroup) {
-        if (((ReactViewGroup) parent).focusDestinations.length > 0) {
-          Rect parentRect = ReactViewGroup.tempRect1;
-          ((ReactViewGroup) parent).getFocusedRect(parentRect);
-          ((ReactViewGroup) parent).offsetRectIntoDescendantCoords(this, parentRect);
-          switch (currentFocusSearchDirection) {
-            case FOCUS_DOWN:
-            case FOCUS_UP:
-              r.right = parentRect.right;
-              r.left = parentRect.left;
-              break;
-            case FOCUS_LEFT:
-            case FOCUS_RIGHT:
-              r.top = parentRect.top;
-              r.bottom = parentRect.bottom;
-              break;
+//    log("focusedRect " + r);
+    if (FocusModule.useParentDimension) {
+      ViewParent parent = getParent();
+      while (parent != null) {
+        if (parent instanceof ReactViewGroup) {
+          if (((ReactViewGroup) parent).focusDestinations.length > 0) {
+            Rect parentRect = ReactViewGroup.tempRect1;
+            ((ReactViewGroup) parent).getFocusedRect(parentRect);
+            ((ReactViewGroup) parent).offsetRectIntoDescendantCoords(this, parentRect);
+            switch (currentFocusSearchDirection) {
+              case FOCUS_DOWN:
+              case FOCUS_UP:
+                r.right = parentRect.right;
+                r.left = parentRect.left;
+                break;
+              case FOCUS_LEFT:
+              case FOCUS_RIGHT:
+                r.top = parentRect.top;
+                r.bottom = parentRect.bottom;
+                break;
+            }
+            log("applying parent focusedRect " + r);
+            return;
           }
-          log("applying parent focusedRect " + r);
-          return;
         }
+        parent = parent.getParent();
       }
-      parent = parent.getParent();
     }
   }
 
