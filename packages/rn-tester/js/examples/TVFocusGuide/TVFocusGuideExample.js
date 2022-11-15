@@ -79,9 +79,14 @@ const TVFocusGuideExample = () => {
   const buttonTopRight = React.useRef(null);
   const buttonBottomLeft = React.useRef(null);
 
-  const rightButtonInFocusViewContainer = React.useRef(null);
-  const containerDestinations = rightButtonInFocusViewContainer?.current
-    ? [rightButtonInFocusViewContainer?.current]
+  const rightButtonInFocusViewContainer1 = React.useRef(null);
+  const rightButtonInFocusViewContainer2 = React.useRef(null);
+
+  const containerDestinations1 = rightButtonInFocusViewContainer1?.current
+    ? [rightButtonInFocusViewContainer1?.current]
+    : [];
+  const containerDestinations2 = rightButtonInFocusViewContainer2?.current
+    ? [rightButtonInFocusViewContainer2?.current]
     : [];
 
   const _setDestination = (o: ?Object, text: string) => {
@@ -104,12 +109,12 @@ const TVFocusGuideExample = () => {
               />
               <ThemedView label={`Focus guide points to ${destinationText}`} />
               <TVFocusGuideView
-                style={styles.containerFocusGuide}
-                destinations={containerDestinations}>
+                style={styles.containerFocusGuide1}
+                destinations={containerDestinations1}>
                 <Button onPress={() => {}} label="Wrapped button 1" />
                 <Button onPress={() => {}} label="Wrapped button 2" />
                 <Button
-                  ref={rightButtonInFocusViewContainer}
+                  ref={rightButtonInFocusViewContainer1}
                   onPress={() => {}}
                   label="Wrapped button 3"
                 />
@@ -140,13 +145,18 @@ const TVFocusGuideExample = () => {
                 }}
               </RNTesterThemeContext.Consumer>
               <ThemedView label="" />
-              <ThemedView
-                style={{
-                  width: width * 3,
-                }}
-                label="Blue focus guide container above always points to button 3
-                  if navigating from outside"
-              />
+              <TVFocusGuideView
+                style={styles.containerFocusGuide2}
+                destinations={containerDestinations2}>
+                <Button onPress={() => {}} label="Wrapped button 1" />
+                <Button onPress={() => {}} label="Wrapped button 2" />
+                              <ThemedView label="small space" />
+                <Button
+                  ref={rightButtonInFocusViewContainer2}
+                  onPress={() => {}}
+                  label="Wrapped button 3"
+                />
+              </TVFocusGuideView>
             </View>
           </View>
         );
@@ -170,10 +180,10 @@ const styles = StyleSheet.create({
   buttonStyle: {
     width,
     height,
-    marginLeft: marginSize,
-    marginRight: marginSize,
-    marginTop: marginSize,
-    marginBottom: marginSize,
+//    marginLeft: marginSize,
+//    marginRight: marginSize,
+//    marginTop: marginSize,
+//    marginBottom: marginSize,
   },
   focusGuide: {
     width,
@@ -183,10 +193,17 @@ const styles = StyleSheet.create({
     marginTop: marginSize,
     marginBottom: marginSize,
   },
-  containerFocusGuide: {
+  containerFocusGuide1: {
     backgroundColor: 'transparent',
     borderColor: 'blue',
     borderWidth: 2,
     flexDirection: 'row',
+  },
+  containerFocusGuide2: {
+    backgroundColor: 'transparent',
+    borderColor: 'pink',
+    borderWidth: 2,
+    flexDirection: 'row',
+        width: width * 5
   },
 });
