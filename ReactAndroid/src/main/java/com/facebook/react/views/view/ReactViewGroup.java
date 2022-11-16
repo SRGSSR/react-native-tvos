@@ -21,6 +21,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.os.Build;
 import android.util.Log;
+import android.view.FocusFinder;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -1183,6 +1184,16 @@ public class ReactViewGroup extends ViewGroup
     currentFocusSearchDirection = direction;
     log("focusSearch(" + dbgView(focused) + ", " + direction + ")");
 
+    boolean isFocusGuide = focusDestinations.length > 0;
+
+    if (isFocusGuide) {
+      View localTarget = FocusFinder.getInstance().findNextFocus(this, focused, direction);
+      if (localTarget != null) {
+        log("found target within same focus guide " + dbgView(localTarget));
+        return localTarget;
+      }
+    }
+
     View searchResult = super.focusSearch(focused, direction);
     if (searchResult == null) {
       return null;
@@ -1193,7 +1204,7 @@ public class ReactViewGroup extends ViewGroup
       if (targetParent != null) {
         View currentParent = findParentFocusGuide(focused);
         if (currentParent != targetParent) {
-          if (!isDirectionValid(currentParent != null ? currentParent : focused, direction)) {
+          if (isFocusGuide && !isDirectionValid(this, direction)) {
             log("Invalid direction when leaving focus view, focusSearch null");
             return null;
           }
