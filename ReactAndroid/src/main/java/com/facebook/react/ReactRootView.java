@@ -849,7 +849,7 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
               + notchHeight;
 
       boolean isTVKeyboardOpen = false;
-      if (isTVDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      if (isTVDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         WindowInsets insets = getRootView().getRootWindowInsets();
         if (insets != null) {
           isTVKeyboardOpen = insets.isVisible(WindowInsets.Type.ime());
