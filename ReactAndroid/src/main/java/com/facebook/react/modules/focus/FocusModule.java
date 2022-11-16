@@ -28,6 +28,10 @@ public class FocusModule extends ReactContextBaseJavaModule {
   public static final String ON_CHANGE = "FocusModule.change";
 
   public static boolean enabled = true;
+  public static boolean alignCheck = false;
+  public static boolean useParentDimension = false;
+  public static boolean focusSearchReturnsParentFocusGuide = true;
+
   public static boolean log = false;
   public static boolean visualDebugger = false;
 
@@ -52,6 +56,21 @@ public class FocusModule extends ReactContextBaseJavaModule {
   public void setEnabled(boolean enabled) {
     FocusModule.enabled = enabled;
     LocalBroadcastManager.getInstance(getReactApplicationContext()).sendBroadcast(new Intent(ON_CHANGE));
+  }
+
+  @ReactMethod
+  public void setAlignmentCheck(boolean enabled) {
+    FocusModule.alignCheck = enabled;
+  }
+
+  @ReactMethod
+  public void setUseParentDimension(boolean enabled) {
+    FocusModule.useParentDimension = enabled;
+  }
+
+  @ReactMethod
+  public void setFocusSearchReturnsParentFocusGuide(boolean enabled) {
+    FocusModule.focusSearchReturnsParentFocusGuide = enabled;
   }
 
   @ReactMethod

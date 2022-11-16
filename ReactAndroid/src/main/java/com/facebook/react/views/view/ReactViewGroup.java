@@ -859,8 +859,8 @@ public class ReactViewGroup extends ViewGroup
   public void updateFocusability(float alpha) {
     boolean focusable =
       (this.tvSelectable && ((alpha > 0.001) || this.tvPreferredFocus))
-      || (this.rnAccessible && (this.getTag(R.id.accessibility_label) != null))
-      || this.focusDestinations.length > 0;
+        || (this.rnAccessible && (this.getTag(R.id.accessibility_label) != null))
+        || this.focusDestinations.length > 0;
     setFocusable(focusable);
     if (FocusModule.log) {
       log(
@@ -1133,6 +1133,112 @@ public class ReactViewGroup extends ViewGroup
   }
 
   @Override
+  public View focusSearch(int direction) {
+    log("focusSearch(" + direction + ")");
+    return super.focusSearch(direction);
+  }
+
+  static int currentFocusSearchDirection = 0;
+  static Rect tempRect1 = new Rect();
+  static Rect tempRect2 = new Rect();
+
+  @Override
+  public View focusSearch(View focused, int direction) {
+    currentFocusSearchDirection = direction;
+    log("focusSearch(" + focused + ", " + direction + ")");
+
+    View searchResult = super.focusSearch(focused, direction);
+    if (searchResult == null) {
+      return null;
+    }
+
+    if (FocusModule.focusSearchReturnsParentFocusGuide) {
+      View targetParent = findParentFocusGuide(searchResult);
+      if (targetParent != null) {
+        View currentParent = findParentFocusGuide(focused);
+        if (currentParent != targetParent) {
+          return targetParent;
+        }
+      }
+    }
+
+    if (!alignCheck(direction, searchResult)) {
+      if (FocusModule.alignCheck) {
+        log("focus Search not aligned => null");
+        return null;
+      } else {
+        log("focus Search not aligned (ignored)");
+      }
+    }
+
+    return searchResult;
+  }
+
+  @Nullable
+  private View findParentFocusGuide(View searchResult) {
+    ViewParent parent = searchResult.getParent();
+    while (parent != null) {
+      if (parent instanceof ReactViewGroup) {
+        boolean focusGuideWithDescendants = ((ReactViewGroup) parent).focusDestinations.length > 0;
+        if (focusGuideWithDescendants) {
+          log("focusSearch -> parent focusGuide: " + parent);
+          return (View) parent;
+        }
+      }
+      parent = parent.getParent();
+    }
+    return null;
+  }
+
+  private boolean alignCheck(int direction, View searchResult) {
+    Rect a = tempRect1;
+    Rect b = tempRect2;
+    this.getGlobalVisibleRect(a);
+    searchResult.getGlobalVisibleRect(b);
+    switch (direction) {
+      case FOCUS_DOWN:
+      case FOCUS_UP:
+        return b.left <= a.right && a.left <= b.right;
+      case FOCUS_LEFT:
+      case FOCUS_RIGHT:
+        return b.top <= a.bottom && a.top <= a.bottom;
+    }
+    return true;
+  }
+
+  @Override
+  public void getFocusedRect(Rect r) {
+    super.getFocusedRect(r);
+    if (FocusModule.useParentDimension) {
+      ViewParent parent = getParent();
+      while (parent != null) {
+        if (parent instanceof ReactViewGroup) {
+          if (((ReactViewGroup) parent).focusDestinations.length > 0) {
+            Rect parentRect = ReactViewGroup.tempRect1;
+            ((ReactViewGroup) parent).getFocusedRect(parentRect);
+            ((ReactViewGroup) parent).offsetRectIntoDescendantCoords(this, parentRect);
+            switch (currentFocusSearchDirection) {
+              case FOCUS_DOWN:
+              case FOCUS_UP:
+                r.right = parentRect.right;
+                r.left = parentRect.left;
+                break;
+              case FOCUS_LEFT:
+              case FOCUS_RIGHT:
+                r.top = parentRect.top;
+                r.bottom = parentRect.bottom;
+                break;
+            }
+            log("Modifying focusedRect with parent  " + r + " ( " + currentFocusSearchDirection);
+            return;
+          }
+        }
+        parent = parent.getParent();
+      }
+    }
+  }
+
+  @Override
   public boolean requestFocus(int direction, Rect previouslyFocusedRect) {
     if (this.inRequestFocus == this) {
       log("self focus recursion " + toString());
@@ -1171,7 +1277,7 @@ public class ReactViewGroup extends ViewGroup
       View destination = findDestinationView();
 
       if (destination != null) {
-        log("trying view" + destination + " wasFocusable:" + destination.isFocusable());
+        log("trying view " + destination + " wasFocusable:" + destination.isFocusable());
         destination.setFocusable(true);
         if (requestFocusViewOrAncestor(destination)) {
           log("focused destination view (or ancestor)");
