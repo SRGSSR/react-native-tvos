@@ -30,6 +30,7 @@ import android.view.animation.Animation;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
 
 import com.facebook.common.logging.FLog;
 import com.facebook.infer.annotation.Assertions;
@@ -40,6 +41,7 @@ import com.facebook.react.bridge.ReactSoftExceptionLogger;
 import com.facebook.react.bridge.UiThreadUtil;
 import com.facebook.react.common.annotations.VisibleForTesting;
 import com.facebook.react.config.ReactFeatureFlags;
+import com.facebook.react.modules.focus.FocusModule;
 import com.facebook.react.modules.i18nmanager.I18nUtil;
 import com.facebook.react.touch.OnInterceptTouchEventListener;
 import com.facebook.react.touch.ReactHitSlopView;
@@ -60,7 +62,6 @@ import com.facebook.react.uimanager.ViewProps;
 import com.facebook.react.uimanager.common.UIManagerType;
 import com.facebook.react.uimanager.common.ViewUtil;
 import com.facebook.yoga.YogaConstants;
-import com.facebook.react.modules.focus.FocusModule;
 
 /**
  * Backing for a React View. Has support for borders, but since borders aren't common, lazy
@@ -870,7 +871,7 @@ public class ReactViewGroup extends ViewGroup
           + " rnAccessible: " + this.rnAccessible
           + " accessLabel: " + (this.getTag(R.id.accessibility_label) != null)
           + " destinations: " + this.focusDestinations.length
-          + " " + toString());
+          + " " + dbgView(this));
     }
   }
 
@@ -1134,7 +1135,7 @@ public class ReactViewGroup extends ViewGroup
 
   @Override
   public View focusSearch(int direction) {
-    log("focusSearch(" + direction + ")");
+    log("focusSearch(" + dbgView(this) + " " + direction + ")");
     return super.focusSearch(direction);
   }
 
@@ -1142,10 +1143,45 @@ public class ReactViewGroup extends ViewGroup
   static Rect tempRect1 = new Rect();
   static Rect tempRect2 = new Rect();
 
+  private static final int[] dbg_locationBuffer = new int[2];
+
+  private String dbgView(Object viewObject) {
+    if (viewObject instanceof View) {
+      View view = (View) viewObject;
+      getLocationInWindow(dbg_locationBuffer);
+      int x = dbg_locationBuffer[0];
+      int y = dbg_locationBuffer[1];
+
+      return "#" + Integer.toHexString(view.getId()) + " +" + x + "+" + y
+        + " " + getWidth() + "x" + getHeight();
+    }
+    return viewObject != null ? viewObject.toString() : "null";
+  }
+
+  private static boolean isDirectionValid(View currentFocus, @ViewCompat.FocusDirection int direction) {
+    currentFocus.getLocationInWindow(locationBuffer);
+    currentFocus.getWindowVisibleDisplayFrame(windowRectBuffer);
+    int x = locationBuffer[0];
+    int y = locationBuffer[1];
+
+    switch (direction) {
+      case FOCUS_UP:
+        return y > windowRectBuffer.top;
+      case FOCUS_DOWN:
+        return (y + currentFocus.getHeight() < windowRectBuffer.bottom);
+      case FOCUS_LEFT:
+        return x > windowRectBuffer.left;
+      case FOCUS_RIGHT:
+        return x + currentFocus.getWidth() < windowRectBuffer.right;
+      default:
+        return true;
+    }
+  }
+
   @Override
   public View focusSearch(View focused, int direction) {
     currentFocusSearchDirection = direction;
-    log("focusSearch(" + focused + ", " + direction + ")");
+    log("focusSearch(" + dbgView(focused) + ", " + direction + ")");
 
     View searchResult = super.focusSearch(focused, direction);
     if (searchResult == null) {
@@ -1157,6 +1193,10 @@ public class ReactViewGroup extends ViewGroup
       if (targetParent != null) {
         View currentParent = findParentFocusGuide(focused);
         if (currentParent != targetParent) {
+          if (!isDirectionValid(currentParent != null ? currentParent : focused, direction)) {
+            log("Invalid direction when leaving focus view, focusSearch null");
+            return null;
+          }
           return targetParent;
         }
       }
@@ -1181,7 +1221,7 @@ public class ReactViewGroup extends ViewGroup
       if (parent instanceof ReactViewGroup) {
         boolean focusGuideWithDescendants = ((ReactViewGroup) parent).focusDestinations.length > 0;
         if (focusGuideWithDescendants) {
-          log("focusSearch -> parent focusGuide: " + parent);
+          log("focusSearch -> parent focusGuide: " + dbgView(parent));
           return (View) parent;
         }
       }
@@ -1241,14 +1281,14 @@ public class ReactViewGroup extends ViewGroup
   @Override
   public boolean requestFocus(int direction, Rect previouslyFocusedRect) {
     if (this.inRequestFocus == this) {
-      log("self focus recursion " + toString());
+      log("self focus recursion " + dbgView(this));
       return false;
     }
     this.inRequestFocus = this;
     try {
       if (ReactViewGroup.androidVisibleFocusOnly && !programmaticRequestFocus) {
         if (!isShown()) {
-          log("no focus for invisible views " + toString());
+          log("no focus for invisible views " + dbgView(this));
           return false;
         }
         getLocationInWindow(locationBuffer);
@@ -1258,10 +1298,10 @@ public class ReactViewGroup extends ViewGroup
         log("requestFocus " + " destinations: " + focusDestinations.length + " +" + x + "+" + y
           + " " + getWidth() + "x" + getHeight()
           + " " + windowRectBuffer.left + "+" + windowRectBuffer.top + ":" + windowRectBuffer.right + "+" + windowRectBuffer.bottom
-          + toString()
+          + dbgView(this)
         );
         if (!windowRectBuffer.intersect(x, y, x + getWidth(), y + getHeight())) {
-          log("no focus for item outside of window (direction:" + direction + ")" + toString());
+          log("no focus for item outside of window (direction:" + direction + ")" + dbgView(this));
           return false;
         }
       }
