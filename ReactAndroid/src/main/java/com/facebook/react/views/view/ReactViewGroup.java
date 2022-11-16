@@ -1163,9 +1163,11 @@ public class ReactViewGroup extends ViewGroup
     }
 
     if (!alignCheck(direction, searchResult)) {
-      log("focus Search not aligned");
       if (FocusModule.alignCheck) {
+        log("focus Search not aligned => null");
         return null;
+      } else {
+        log("focus Search not aligned (ignored)");
       }
     }
 
@@ -1275,7 +1277,7 @@ public class ReactViewGroup extends ViewGroup
       View destination = findDestinationView();
 
       if (destination != null) {
-        log("trying view" + destination + " wasFocusable:" + destination.isFocusable());
+        log("trying view " + destination + " wasFocusable:" + destination.isFocusable());
         destination.setFocusable(true);
         if (requestFocusViewOrAncestor(destination)) {
           log("focused destination view (or ancestor)");
