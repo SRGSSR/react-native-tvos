@@ -62,6 +62,7 @@ public abstract class ReactActivity extends AppCompatActivity
 
   private Handler periodicHandler;
   private static int focusMonitorInterval = 200;
+  private final static int focusUpdatePeriod = 10;
   private FocusView focusView;
 
   /**
@@ -208,6 +209,7 @@ public abstract class ReactActivity extends AppCompatActivity
 
     int focusViewCount = 0;
     final WeakHashMap<View, Integer> lastFocusedViews = new WeakHashMap<>();
+    int focusUpdateTime = 0;
 
     private void highlightFocus() {
       if (focusView == null) {
@@ -219,11 +221,13 @@ public abstract class ReactActivity extends AppCompatActivity
         focusView.rect.setEmpty();
         focusView.invalidate();
       }
-      if (this.previousFocus != focused) {
+      focusUpdateTime++;
+      if (this.previousFocus != focused || focusUpdateTime > focusUpdatePeriod) {
         highlightFocusables();
         this.previousFocus = focused;
         focusView.message = focused != null ? focused.toString() : "--";
         focusView.alpha = 10;
+        focusUpdateTime = 0;
       }
       if (focused != null) {
         focused.getGlobalVisibleRect(focusView.getRect());
