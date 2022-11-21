@@ -55,9 +55,7 @@ public class IntentModule extends NativeIntentAndroidSpec {
         String action = intent.getAction();
         Uri uri = intent.getData();
 
-        if (uri != null
-            && (Intent.ACTION_VIEW.equals(action)
-                || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action))) {
+        if (uri != null) {
           initialURL = uri.toString();
         }
       }
