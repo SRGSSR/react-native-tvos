@@ -541,9 +541,7 @@ public class ReactInstanceManager {
       String action = intent.getAction();
       Uri uri = intent.getData();
 
-      if (uri != null
-          && (Intent.ACTION_VIEW.equals(action)
-              || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action))) {
+      if (uri != null) {
         DeviceEventManagerModule deviceEventManagerModule =
             currentContext.getNativeModule(DeviceEventManagerModule.class);
         if (deviceEventManagerModule != null) {
