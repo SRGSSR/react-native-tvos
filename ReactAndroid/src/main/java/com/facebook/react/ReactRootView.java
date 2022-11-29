@@ -34,6 +34,10 @@ import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+
 import com.facebook.common.logging.FLog;
 import com.facebook.infer.annotation.Assertions;
 import com.facebook.infer.annotation.ThreadConfined;
@@ -849,10 +853,10 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
               + notchHeight;
 
       boolean isTVKeyboardOpen = false;
-      if (isTVDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        WindowInsets insets = getRootView().getRootWindowInsets();
+      if (isTVDevice) {
+        WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(getRootView());
         if (insets != null) {
-          isTVKeyboardOpen = insets.isVisible(WindowInsets.Type.ime());
+          isTVKeyboardOpen = insets.isVisible(WindowInsetsCompat.Type.ime());
         }
       }
       boolean hasTVKeyboardOpenedOrClosed = isTVKeyboardOpen != mIsTVKeyboardOpen;
