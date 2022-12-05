@@ -1136,7 +1136,9 @@ public class ReactViewGroup extends ViewGroup
 
   @Override
   public View focusSearch(int direction) {
-    log("focusSearch(" + dbgView(this) + " " + direction + ")");
+    if (FocusModule.log) {
+      log("focusSearch(" + dbgView(this) + " " + direction + ")");
+    }
     return super.focusSearch(direction);
   }
 
@@ -1146,15 +1148,15 @@ public class ReactViewGroup extends ViewGroup
 
   private static final int[] dbg_locationBuffer = new int[2];
 
-  private String dbgView(Object viewObject) {
+  private static String dbgView(Object viewObject) {
     if (viewObject instanceof View) {
       View view = (View) viewObject;
-      getLocationInWindow(dbg_locationBuffer);
+      view.getLocationInWindow(dbg_locationBuffer);
       int x = dbg_locationBuffer[0];
       int y = dbg_locationBuffer[1];
 
       return "#" + Integer.toHexString(view.getId()) + " +" + x + "+" + y
-        + " " + getWidth() + "x" + getHeight();
+        + " " + view.getWidth() + "x" + view.getHeight();
     }
     return viewObject != null ? viewObject.toString() : "null";
   }
@@ -1182,8 +1184,9 @@ public class ReactViewGroup extends ViewGroup
   @Override
   public View focusSearch(View focused, int direction) {
     currentFocusSearchDirection = direction;
-    log("focusSearch(" + dbgView(focused) + ", " + direction + ")");
-
+    if (FocusModule.log) {
+      log("focusSearch(" + dbgView(this) + ", " + dbgView(focused) + ", " + direction + ")");
+    }
     boolean isFocusGuide = focusDestinations.length > 0;
 
     if (isFocusGuide) {
