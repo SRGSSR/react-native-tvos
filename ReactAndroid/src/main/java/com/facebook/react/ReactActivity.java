@@ -35,6 +35,7 @@ import com.facebook.react.modules.core.PermissionAwareActivity;
 import com.facebook.react.modules.core.PermissionListener;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.WeakHashMap;
 
 import com.facebook.react.modules.focus.FocusModule;
@@ -170,23 +171,19 @@ public abstract class ReactActivity extends AppCompatActivity
     }
 
     private boolean autoRestoreFocus() {
-      final boolean found[] = new boolean[1];
-      found[0] = false;
       log("autoRestoreFocus: " + focusViewCount + " totalViewCount: " + lastFocusedViews.size());
       for (int i = focusViewCount; i > 0; i--) {
         if (lastFocusedViews.containsValue(i)) {
           final int focusViewIdx = i;
-          lastFocusedViews.forEach((View view, Integer idx) -> {
-            if (!found[0] && idx == focusViewIdx) {
+          for (Map.Entry<View, Integer> entry : lastFocusedViews.entrySet()) {
+            if (entry.getValue() == focusViewIdx) {
+              View view = entry.getKey();
               log("autoRestoreFocus trying to focus " + view + " attached:" + view.isAttachedToWindow());
               if (view.isAttachedToWindow() && view.requestFocus()) {
                 log("autoRestoreFocus focused " + view);
-                found[0] = true;
+                return true;
               }
             }
-          });
-          if (found[0]) {
-            return true;
           }
         }
       }
