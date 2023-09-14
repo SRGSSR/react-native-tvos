@@ -90,6 +90,8 @@ public class ReactViewGroup extends ViewGroup
   private boolean trapFocusDown = false;
   private boolean trapFocusLeft = false;
   private boolean trapFocusRight = false;
+  private boolean tvPreferredFocus = false;
+  private float previousAlpha = -1;
 
   /**
    * This listener will be set for child views when removeClippedSubview property is enabled. When
@@ -1127,6 +1129,63 @@ public class ReactViewGroup extends ViewGroup
     }
 
     setAlpha(0);
+  }
+
+  private float getAncestorsAlpha() {
+    float alpha = 1;
+    View v = this;
+    for (; ; ) {
+      ViewParent parent = v.getParent();
+      if (parent instanceof View) {
+        v = (View) parent;
+        alpha *= v.getAlpha();
+      } else {
+        break;
+      }
+    }
+    return alpha;
+  }
+
+
+  @Override
+  public void setAlpha(float alpha) {
+    super.setAlpha(alpha);
+    if (this.previousAlpha != alpha) {
+      updateTreeFocusability(getAncestorsAlpha(), this);
+    }
+    this.previousAlpha = alpha;
+  }
+
+
+  public static void updateTreeFocusability(float parentAlpha, View v) {
+    float alpha = parentAlpha * v.getAlpha();
+    if (v instanceof ReactViewGroup) {
+      ((ReactViewGroup) v).updateFocusability(alpha);
+    }
+    if (v instanceof ViewGroup) {
+      ViewGroup vg = (ViewGroup) v;
+      for (int i = 0; i < vg.getChildCount(); i++) {
+        View child = vg.getChildAt(i);
+        updateTreeFocusability(alpha, child);
+      }
+    }
+  }
+
+  public void updateFocusability() {
+    updateFocusability(getAncestorsAlpha() * getAlpha());
+  }
+
+  public void updateFocusability(float alpha) {
+    boolean focusable = alpha > 0.001 || this.tvPreferredFocus || (this.isTVFocusGuide() && this.focusDestinations.length > 0);
+    setFocusable(focusable);
+    setFocusableInTouchMode(focusable);
+  }
+
+  public void setTVPreferredFocus(boolean hasTVPreferredFocus) {
+    if (this.tvPreferredFocus != hasTVPreferredFocus) {
+      this.tvPreferredFocus = hasTVPreferredFocus;
+      updateFocusability();
+    }
   }
 
   private View findDestinationView() {
