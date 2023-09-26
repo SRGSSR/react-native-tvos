@@ -91,7 +91,6 @@ public class ReactViewGroup extends ViewGroup
   private boolean trapFocusLeft = false;
   private boolean trapFocusRight = false;
   private boolean tvPreferredFocus = false;
-  private float previousAlpha = -1;
 
   /**
    * This listener will be set for child views when removeClippedSubview property is enabled. When
@@ -1146,46 +1145,25 @@ public class ReactViewGroup extends ViewGroup
     return alpha;
   }
 
+  private boolean canReceiveFocus() {
+    float alpha = getAncestorsAlpha() * getAlpha();
+    return (alpha > 0.001 || this.tvPreferredFocus);
+  }
 
   @Override
-  public void setAlpha(float alpha) {
-    super.setAlpha(alpha);
-    if (this.previousAlpha != alpha) {
-      updateTreeFocusability(getAncestorsAlpha(), this);
-    }
-    this.previousAlpha = alpha;
+  public void setFocusable(int _focusable) {
+    int focusable = (_focusable == View.FOCUSABLE) && canReceiveFocus() ? View.FOCUSABLE : View.NOT_FOCUSABLE;
+    super.setFocusable(focusable);
   }
 
-
-  public static void updateTreeFocusability(float parentAlpha, View v) {
-    float alpha = parentAlpha * v.getAlpha();
-    if (v instanceof ReactViewGroup) {
-      ((ReactViewGroup) v).updateFocusability(alpha);
-    }
-    if (v instanceof ViewGroup) {
-      ViewGroup vg = (ViewGroup) v;
-      for (int i = 0; i < vg.getChildCount(); i++) {
-        View child = vg.getChildAt(i);
-        updateTreeFocusability(alpha, child);
-      }
-    }
-  }
-
-  public void updateFocusability() {
-    updateFocusability(getAncestorsAlpha() * getAlpha());
-  }
-
-  public void updateFocusability(float alpha) {
-    boolean focusable = alpha > 0.001 || this.tvPreferredFocus || (this.isTVFocusGuide() && this.focusDestinations.length > 0);
-    setFocusable(focusable);
-    setFocusableInTouchMode(focusable);
+  @Override
+  public void setFocusable(boolean _focusable) {
+    boolean focusable = _focusable && canReceiveFocus();
+    super.setFocusable(focusable);
   }
 
   public void setTVPreferredFocus(boolean hasTVPreferredFocus) {
-    if (this.tvPreferredFocus != hasTVPreferredFocus) {
-      this.tvPreferredFocus = hasTVPreferredFocus;
-      updateFocusability();
-    }
+    this.tvPreferredFocus = hasTVPreferredFocus;
   }
 
   private View findDestinationView() {

@@ -86,6 +86,8 @@ public class ReactViewManager extends ReactClippingViewManager<ReactViewGroup> {
   public void setTVPreferredFocus(ReactViewGroup view, boolean hasTVPreferredFocus) {
     view.setTVPreferredFocus(hasTVPreferredFocus);
     if (hasTVPreferredFocus) {
+      view.setFocusable(true);
+      view.setFocusableInTouchMode(true);
       view.requestFocus();
     }
   }
@@ -282,13 +284,16 @@ public class ReactViewManager extends ReactClippingViewManager<ReactViewGroup> {
                       UIManagerHelper.getSurfaceId(view.getContext()), view.getId()));
             }
           });
+
+      // Clickable elements are focusable. On API 26, this is taken care by setClickable.
+      // Explicitly calling setFocusable here for backward compatibility.
+      view.setFocusable(true /*isFocusable*/);
     } else {
       view.setOnClickListener(null);
       view.setClickable(false);
       // Don't set view.setFocusable(false) because we might still want it to be focusable for
       // accessibility reasons
     }
-    view.updateFocusability();
   }
 
   @ReactProp(name = "tvFocusable")
