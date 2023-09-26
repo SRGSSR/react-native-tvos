@@ -85,11 +85,6 @@ public class ReactViewManager extends ReactClippingViewManager<ReactViewGroup> {
   @ReactProp(name = "hasTVPreferredFocus")
   public void setTVPreferredFocus(ReactViewGroup view, boolean hasTVPreferredFocus) {
     view.setTVPreferredFocus(hasTVPreferredFocus);
-    if (hasTVPreferredFocus) {
-      view.setFocusable(true);
-      view.setFocusableInTouchMode(true);
-      view.requestFocus();
-    }
   }
 
   @ReactProp(name = "nextFocusDown", defaultInt = View.NO_ID)
@@ -296,12 +291,9 @@ public class ReactViewManager extends ReactClippingViewManager<ReactViewGroup> {
     }
   }
 
-  @ReactProp(name = "tvFocusable")
-  public void setTvFocusable(final ReactViewGroup view, boolean focusable) {
-    setFocusable(view, focusable);
-    if (!focusable) {
-      view.setFocusable(false);
-    }
+  @ReactProp(name = "isTVSelectable")
+  public void setIsTVSelectable(final ReactViewGroup view, boolean focusable) {
+    view.setTVSelectable(focusable);
   }
 
   @ReactProp(name = ViewProps.OVERFLOW)
