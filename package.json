@@ -1,7 +1,7 @@
 {
   "name": "@react-native-tvos/monorepo",
   "private": true,
-  "version": "0.72.4-0",
+  "version": "0.72.5-0",
   "description": "A framework for building native apps using React",
   "license": "MIT",
   "repository": "github:facebook/react-native",
@@ -40,7 +40,8 @@
     "test-ios": "./scripts/objc-test.sh test",
     "test-typescript": "dtslint packages/react-native/types",
     "test-typescript-offline": "dtslint --localTs node_modules/typescript/lib  packages/react-native/types",
-    "bump-all-updated-packages": "node ./scripts/monorepo/bump-all-updated-packages"
+    "bump-all-updated-packages": "node ./scripts/monorepo/bump-all-updated-packages",
+    "trigger-react-native-release": "node ./scripts/trigger-react-native-release.js"
   },
   "workspaces": [
     "packages/*"
@@ -96,6 +97,6 @@
     "signedsource": "^1.0.0",
     "typescript": "4.1.3",
     "ws": "^6.2.2",
-    "react-native-core": "npm:react-native@0.72.4"
+    "react-native-core": "npm:react-native@0.72.5"
   }
 }
