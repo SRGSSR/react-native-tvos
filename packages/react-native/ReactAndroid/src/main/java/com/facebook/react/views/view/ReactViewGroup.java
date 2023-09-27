@@ -1190,38 +1190,53 @@ public class ReactViewGroup extends ViewGroup
     return (this.tvSelectable && (this.treeAlpha > 0.001 || this.tvPreferredFocus)) || (this.isTVFocusGuide() && this.focusDestinations.length > 0);
   }
 
+  private int focusableBoolToInt(boolean focusable) {
+    return focusable ? View.FOCUSABLE : View.NOT_FOCUSABLE;
+  }
+
+  private boolean focusableIntToBool(int focusable) {
+    return focusable == View.FOCUSABLE;
+  }
+
+
   @Override
   public void setFocusable(int _focusable) {
-    this.mFocusable = _focusable;
     int focusable;
     if(this.mForceFocusable) {
-      focusable = _focusable;
+      focusable = View.FOCUSABLE;
     } else {
+      this.mFocusable = _focusable;
       focusable = _focusable == View.FOCUSABLE && this.canReceiveFocus() ? View.FOCUSABLE : View.NOT_FOCUSABLE;
     }
     super.setFocusable(focusable);
-    this.setFocusableInTouchMode(focusable == View.FOCUSABLE);
+    this.setFocusableInTouchMode(focusableIntToBool(focusable));
   }
 
   @Override
   public void setFocusable(boolean focusable) {
-    this.setFocusable(focusable ? View.FOCUSABLE : View.NOT_FOCUSABLE);
+    this.setFocusable(focusableBoolToInt(focusable));
+  }
+
+  private void refreshFocusable() {
+    this.setFocusable(this.mFocusable);
   }
 
   public void forceFocusable(boolean focusable) {
     this.mForceFocusable = focusable;
-    this.setFocusable(focusable);
-  }
-
-  private void refreshFocusable() {
-    this.setFocusable(mFocusable);
+    if(focusable) {
+      this.setFocusable(true);
+    } else {
+      this.refreshFocusable();
+    }
   }
 
   public void setTVPreferredFocus(boolean hasTVPreferredFocus) {
     this.tvPreferredFocus = hasTVPreferredFocus;
-    this.setFocusable(hasTVPreferredFocus);
     if (hasTVPreferredFocus) {
+      this.setFocusable(true);
       this.requestFocus();
+    } else {
+      this.refreshFocusable();
     }
   }
 
