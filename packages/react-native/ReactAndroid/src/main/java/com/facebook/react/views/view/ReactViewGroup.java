@@ -1143,6 +1143,19 @@ public class ReactViewGroup extends ViewGroup
     }
   }
 
+  public void setTVPreferredFocus(boolean hasTVPreferredFocus) {
+    this.tvPreferredFocus = hasTVPreferredFocus;
+    if (hasTVPreferredFocus) {
+      this.forceFocusable(true);
+      boolean gainedFocus = this.requestFocus();
+      if(!gainedFocus) {
+        this.forceFocusable(false);
+      }
+    } else {
+      this.refreshFocusable();
+    }
+  }
+
   public void setTreeAlpha(float alpha) {
     this.treeAlpha = alpha;
   }
@@ -1187,7 +1200,7 @@ public class ReactViewGroup extends ViewGroup
   }
 
   private boolean canReceiveFocus() {
-    return (this.tvSelectable && (this.treeAlpha > 0.001 || this.tvPreferredFocus)) || (this.isTVFocusGuide() && this.focusDestinations.length > 0);
+    return (this.tvSelectable && this.treeAlpha > 0.001) || (this.isTVFocusGuide() && this.focusDestinations.length > 0);
   }
 
   private int focusableBoolToInt(boolean focusable) {
@@ -1225,16 +1238,6 @@ public class ReactViewGroup extends ViewGroup
     this.mForceFocusable = focusable;
     if(focusable) {
       this.setFocusable(true);
-    } else {
-      this.refreshFocusable();
-    }
-  }
-
-  public void setTVPreferredFocus(boolean hasTVPreferredFocus) {
-    this.tvPreferredFocus = hasTVPreferredFocus;
-    if (hasTVPreferredFocus) {
-      this.setFocusable(true);
-      this.requestFocus();
     } else {
       this.refreshFocusable();
     }
