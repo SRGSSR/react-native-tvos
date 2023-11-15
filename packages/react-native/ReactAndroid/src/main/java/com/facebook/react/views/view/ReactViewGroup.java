@@ -20,6 +20,7 @@ import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.os.Build;
+import android.util.Log;
 import android.view.FocusFinder;
 import android.view.MotionEvent;
 import android.view.View;
@@ -27,7 +28,6 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.ViewStructure;
 import android.view.animation.Animation;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -69,12 +69,12 @@ import java.util.ArrayList;
  */
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
 public class ReactViewGroup extends ViewGroup
-  implements ReactInterceptingViewGroup,
-  ReactClippingViewGroup,
-  ReactPointerEventsView,
-  ReactHitSlopView,
-  ReactZIndexedViewGroup,
-  ReactOverflowViewWithInset {
+        implements ReactInterceptingViewGroup,
+        ReactClippingViewGroup,
+        ReactPointerEventsView,
+        ReactHitSlopView,
+        ReactZIndexedViewGroup,
+        ReactOverflowViewWithInset {
 
   private static final int ARRAY_CAPACITY_INCREMENT = 12;
   private static final int DEFAULT_BACKGROUND_COLOR = Color.TRANSPARENT;
@@ -90,6 +90,12 @@ public class ReactViewGroup extends ViewGroup
   private boolean trapFocusDown = false;
   private boolean trapFocusLeft = false;
   private boolean trapFocusRight = false;
+  private boolean tvPreferredFocus = false;
+  private float treeAlpha = -1f;
+  private float previousAlpha = -1f;
+  private int mFocusable = View.NOT_FOCUSABLE;
+  private boolean tvSelectable = false;
+  private boolean mForceFocusable = false;
 
   /**
    * This listener will be set for child views when removeClippedSubview property is enabled. When
@@ -109,15 +115,15 @@ public class ReactViewGroup extends ViewGroup
 
     @Override
     public void onLayoutChange(
-      View v,
-      int left,
-      int top,
-      int right,
-      int bottom,
-      int oldLeft,
-      int oldTop,
-      int oldRight,
-      int oldBottom) {
+            View v,
+            int left,
+            int top,
+            int right,
+            int bottom,
+            int oldLeft,
+            int oldTop,
+            int oldRight,
+            int oldBottom) {
       if (mParent.getRemoveClippedSubviews()) {
         mParent.updateSubviewClipStatus(v);
       }
@@ -207,7 +213,7 @@ public class ReactViewGroup extends ViewGroup
     MeasureSpecAssertions.assertExplicitMeasureSpec(widthMeasureSpec, heightMeasureSpec);
 
     setMeasuredDimension(
-      MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.getSize(heightMeasureSpec));
+            MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.getSize(heightMeasureSpec));
   }
 
   @Override
@@ -251,7 +257,7 @@ public class ReactViewGroup extends ViewGroup
   @Override
   public void setBackground(Drawable drawable) {
     throw new UnsupportedOperationException(
-      "This method is not supported for ReactViewGroup instances");
+            "This method is not supported for ReactViewGroup instances");
   }
 
   public void setTranslucentBackgroundDrawable(@Nullable Drawable background) {
@@ -262,7 +268,7 @@ public class ReactViewGroup extends ViewGroup
     updateBackgroundDrawable(null);
     if (mReactBackgroundDrawable != null && background != null) {
       LayerDrawable layerDrawable =
-        new LayerDrawable(new Drawable[]{mReactBackgroundDrawable, background});
+              new LayerDrawable(new Drawable[]{mReactBackgroundDrawable, background});
       updateBackgroundDrawable(layerDrawable);
     } else if (background != null) {
       updateBackgroundDrawable(background);
@@ -277,7 +283,7 @@ public class ReactViewGroup extends ViewGroup
   @Override
   public boolean onInterceptTouchEvent(MotionEvent ev) {
     if (mOnInterceptTouchEventListener != null
-      && mOnInterceptTouchEventListener.onInterceptTouchEvent(this, ev)) {
+            && mOnInterceptTouchEventListener.onInterceptTouchEvent(this, ev)) {
       return true;
     }
     // We intercept the touch event if the children are not supposed to receive it.
@@ -425,8 +431,8 @@ public class ReactViewGroup extends ViewGroup
     View child = Assertions.assertNotNull(mAllChildren)[idx];
     sHelperRect.set(child.getLeft(), child.getTop(), child.getRight(), child.getBottom());
     boolean intersects =
-      clippingRect.intersects(
-        sHelperRect.left, sHelperRect.top, sHelperRect.right, sHelperRect.bottom);
+            clippingRect.intersects(
+                    sHelperRect.left, sHelperRect.top, sHelperRect.right, sHelperRect.bottom);
     boolean needUpdateClippingRecursive = false;
     // We never want to clip children that are being animated, as this can easily break layout :
     // when layout animation changes size and/or position of views contained inside a listview that
@@ -474,8 +480,8 @@ public class ReactViewGroup extends ViewGroup
     // do fast check whether intersect state changed
     sHelperRect.set(subview.getLeft(), subview.getTop(), subview.getRight(), subview.getBottom());
     boolean intersects =
-      mClippingRect.intersects(
-        sHelperRect.left, sHelperRect.top, sHelperRect.right, sHelperRect.bottom);
+            mClippingRect.intersects(
+                    sHelperRect.left, sHelperRect.top, sHelperRect.right, sHelperRect.bottom);
 
     // If it was intersecting before, should be attached to the parent
     boolean oldIntersects = (subview.getParent() != null);
@@ -551,24 +557,24 @@ public class ReactViewGroup extends ViewGroup
      * before trying to find a new focus candidate inside the `parentFocusGuide`.
      */
     UiThreadUtil.runOnUiThread(
-      new Runnable() {
-        @Override
-        public void run() {
-          /**
-           * Focus can move to an another element while waiting for the next frame.
-           * E.g: An element with `hasTVPreferredFocus` can appear.
-           *
-           * We check here to make sure `parentFocusGuide` still remains the focus
-           * before recovering the focus to make sure we don't accidentally override it.
-           */
-          if (parentFocusGuide.isFocused()) {
-            moveFocusToFirstFocusable(parentFocusGuide);
-          }
+            new Runnable() {
+              @Override
+              public void run() {
+                /**
+                 * Focus can move to an another element while waiting for the next frame.
+                 * E.g: An element with `hasTVPreferredFocus` can appear.
+                 *
+                 * We check here to make sure `parentFocusGuide` still remains the focus
+                 * before recovering the focus to make sure we don't accidentally override it.
+                 */
+                if (parentFocusGuide.isFocused()) {
+                  moveFocusToFirstFocusable(parentFocusGuide);
+                }
 
-          parentFocusGuide.setFocusable(false);
-          parentFocusGuide.mRecoverFocus = false;
-        }
-      });
+                parentFocusGuide.setFocusable(false);
+                parentFocusGuide.mRecoverFocus = false;
+              }
+            });
   }
 
   @Override
@@ -590,6 +596,7 @@ public class ReactViewGroup extends ViewGroup
     if (mRemoveClippedSubviews) {
       updateClippingRect();
     }
+    this.setAlpha(this.getAlpha());
   }
 
   private boolean customDrawOrderDisabled() {
@@ -712,7 +719,7 @@ public class ReactViewGroup extends ViewGroup
   }
 
   /*package*/ void addViewWithSubviewClippingEnabled(
-    final View child, int index, ViewGroup.LayoutParams params) {
+          final View child, int index, ViewGroup.LayoutParams params) {
     Assertions.assertCondition(mRemoveClippedSubviews);
     Assertions.assertNotNull(mClippingRect);
     Assertions.assertNotNull(mAllChildren);
@@ -730,25 +737,25 @@ public class ReactViewGroup extends ViewGroup
 
     if (child instanceof ReactClippingProhibitedView) {
       UiThreadUtil.runOnUiThread(
-        new Runnable() {
-          @Override
-          public void run() {
-            if (!child.isShown()) {
-              ReactSoftExceptionLogger.logSoftException(
-                TAG,
-                new ReactNoCrashSoftException(
-                  "Child view has been added to Parent view in which it is clipped and not visible."
-                    + " This is not legal for this particular child view. Child: ["
-                    + child.getId()
-                    + "] "
-                    + child.toString()
-                    + " Parent: ["
-                    + getId()
-                    + "] "
-                    + toString()));
-            }
-          }
-        });
+              new Runnable() {
+                @Override
+                public void run() {
+                  if (!child.isShown()) {
+                    ReactSoftExceptionLogger.logSoftException(
+                            TAG,
+                            new ReactNoCrashSoftException(
+                                    "Child view has been added to Parent view in which it is clipped and not visible."
+                                            + " This is not legal for this particular child view. Child: ["
+                                            + child.getId()
+                                            + "] "
+                                            + child.toString()
+                                            + " Parent: ["
+                                            + getId()
+                                            + "] "
+                                            + toString()));
+                  }
+                }
+              });
     }
   }
 
@@ -847,18 +854,18 @@ public class ReactViewGroup extends ViewGroup
       mReactBackgroundDrawable = new ReactViewBackgroundDrawable(getContext());
       Drawable backgroundDrawable = getBackground();
       updateBackgroundDrawable(
-        null); // required so that drawable callback is cleared before we add the
+              null); // required so that drawable callback is cleared before we add the
       // drawable back as a part of LayerDrawable
       if (backgroundDrawable == null) {
         updateBackgroundDrawable(mReactBackgroundDrawable);
       } else {
         LayerDrawable layerDrawable =
-          new LayerDrawable(new Drawable[]{mReactBackgroundDrawable, backgroundDrawable});
+                new LayerDrawable(new Drawable[]{mReactBackgroundDrawable, backgroundDrawable});
         updateBackgroundDrawable(layerDrawable);
       }
 
       mLayoutDirection =
-        I18nUtil.getInstance().isRTL(getContext()) ? LAYOUT_DIRECTION_RTL : LAYOUT_DIRECTION_LTR;
+              I18nUtil.getInstance().isRTL(getContext()) ? LAYOUT_DIRECTION_RTL : LAYOUT_DIRECTION_LTR;
       mReactBackgroundDrawable.setResolvedLayoutDirection(mLayoutDirection);
     }
     return mReactBackgroundDrawable;
@@ -921,7 +928,7 @@ public class ReactViewGroup extends ViewGroup
         if (getContext() instanceof ReactContext) {
           ReactContext reactContext = (ReactContext) getContext();
           reactContext.handleException(
-            new IllegalViewOperationException("StackOverflowException", this, e));
+                  new IllegalViewOperationException("StackOverflowException", this, e));
         } else {
           throw e;
         }
@@ -966,9 +973,9 @@ public class ReactViewGroup extends ViewGroup
             final RectF borderWidth = mReactBackgroundDrawable.getDirectionAwareBorderInsets();
 
             if (borderWidth.top > 0
-              || borderWidth.left > 0
-              || borderWidth.bottom > 0
-              || borderWidth.right > 0) {
+                    || borderWidth.left > 0
+                    || borderWidth.bottom > 0
+                    || borderWidth.right > 0) {
               left += borderWidth.left;
               top += borderWidth.top;
               right -= borderWidth.right;
@@ -977,31 +984,31 @@ public class ReactViewGroup extends ViewGroup
 
             final float borderRadius = mReactBackgroundDrawable.getFullBorderRadius();
             float topLeftBorderRadius =
-              mReactBackgroundDrawable.getBorderRadiusOrDefaultTo(
-                borderRadius, ReactViewBackgroundDrawable.BorderRadiusLocation.TOP_LEFT);
+                    mReactBackgroundDrawable.getBorderRadiusOrDefaultTo(
+                            borderRadius, ReactViewBackgroundDrawable.BorderRadiusLocation.TOP_LEFT);
             float topRightBorderRadius =
-              mReactBackgroundDrawable.getBorderRadiusOrDefaultTo(
-                borderRadius, ReactViewBackgroundDrawable.BorderRadiusLocation.TOP_RIGHT);
+                    mReactBackgroundDrawable.getBorderRadiusOrDefaultTo(
+                            borderRadius, ReactViewBackgroundDrawable.BorderRadiusLocation.TOP_RIGHT);
             float bottomLeftBorderRadius =
-              mReactBackgroundDrawable.getBorderRadiusOrDefaultTo(
-                borderRadius, ReactViewBackgroundDrawable.BorderRadiusLocation.BOTTOM_LEFT);
+                    mReactBackgroundDrawable.getBorderRadiusOrDefaultTo(
+                            borderRadius, ReactViewBackgroundDrawable.BorderRadiusLocation.BOTTOM_LEFT);
             float bottomRightBorderRadius =
-              mReactBackgroundDrawable.getBorderRadiusOrDefaultTo(
-                borderRadius, ReactViewBackgroundDrawable.BorderRadiusLocation.BOTTOM_RIGHT);
+                    mReactBackgroundDrawable.getBorderRadiusOrDefaultTo(
+                            borderRadius, ReactViewBackgroundDrawable.BorderRadiusLocation.BOTTOM_RIGHT);
 
             final boolean isRTL = mLayoutDirection == View.LAYOUT_DIRECTION_RTL;
             float topStartBorderRadius =
-              mReactBackgroundDrawable.getBorderRadius(
-                ReactViewBackgroundDrawable.BorderRadiusLocation.TOP_START);
+                    mReactBackgroundDrawable.getBorderRadius(
+                            ReactViewBackgroundDrawable.BorderRadiusLocation.TOP_START);
             float topEndBorderRadius =
-              mReactBackgroundDrawable.getBorderRadius(
-                ReactViewBackgroundDrawable.BorderRadiusLocation.TOP_END);
+                    mReactBackgroundDrawable.getBorderRadius(
+                            ReactViewBackgroundDrawable.BorderRadiusLocation.TOP_END);
             float bottomStartBorderRadius =
-              mReactBackgroundDrawable.getBorderRadius(
-                ReactViewBackgroundDrawable.BorderRadiusLocation.BOTTOM_START);
+                    mReactBackgroundDrawable.getBorderRadius(
+                            ReactViewBackgroundDrawable.BorderRadiusLocation.BOTTOM_START);
             float bottomEndBorderRadius =
-              mReactBackgroundDrawable.getBorderRadius(
-                ReactViewBackgroundDrawable.BorderRadiusLocation.BOTTOM_END);
+                    mReactBackgroundDrawable.getBorderRadius(
+                            ReactViewBackgroundDrawable.BorderRadiusLocation.BOTTOM_END);
 
             if (I18nUtil.getInstance().doLeftAndRightSwapInRTL(getContext())) {
               if (YogaConstants.isUndefined(topStartBorderRadius)) {
@@ -1021,13 +1028,13 @@ public class ReactViewGroup extends ViewGroup
               }
 
               final float directionAwareTopLeftRadius =
-                isRTL ? topEndBorderRadius : topStartBorderRadius;
+                      isRTL ? topEndBorderRadius : topStartBorderRadius;
               final float directionAwareTopRightRadius =
-                isRTL ? topStartBorderRadius : topEndBorderRadius;
+                      isRTL ? topStartBorderRadius : topEndBorderRadius;
               final float directionAwareBottomLeftRadius =
-                isRTL ? bottomEndBorderRadius : bottomStartBorderRadius;
+                      isRTL ? bottomEndBorderRadius : bottomStartBorderRadius;
               final float directionAwareBottomRightRadius =
-                isRTL ? bottomStartBorderRadius : bottomEndBorderRadius;
+                      isRTL ? bottomStartBorderRadius : bottomEndBorderRadius;
 
               topLeftBorderRadius = directionAwareTopLeftRadius;
               topRightBorderRadius = directionAwareTopRightRadius;
@@ -1035,13 +1042,13 @@ public class ReactViewGroup extends ViewGroup
               bottomRightBorderRadius = directionAwareBottomRightRadius;
             } else {
               final float directionAwareTopLeftRadius =
-                isRTL ? topEndBorderRadius : topStartBorderRadius;
+                      isRTL ? topEndBorderRadius : topStartBorderRadius;
               final float directionAwareTopRightRadius =
-                isRTL ? topStartBorderRadius : topEndBorderRadius;
+                      isRTL ? topStartBorderRadius : topEndBorderRadius;
               final float directionAwareBottomLeftRadius =
-                isRTL ? bottomEndBorderRadius : bottomStartBorderRadius;
+                      isRTL ? bottomEndBorderRadius : bottomStartBorderRadius;
               final float directionAwareBottomRightRadius =
-                isRTL ? bottomStartBorderRadius : bottomEndBorderRadius;
+                      isRTL ? bottomStartBorderRadius : bottomEndBorderRadius;
 
               if (!YogaConstants.isUndefined(directionAwareTopLeftRadius)) {
                 topLeftBorderRadius = directionAwareTopLeftRadius;
@@ -1061,27 +1068,27 @@ public class ReactViewGroup extends ViewGroup
             }
 
             if (topLeftBorderRadius > 0
-              || topRightBorderRadius > 0
-              || bottomRightBorderRadius > 0
-              || bottomLeftBorderRadius > 0) {
+                    || topRightBorderRadius > 0
+                    || bottomRightBorderRadius > 0
+                    || bottomLeftBorderRadius > 0) {
               if (mPath == null) {
                 mPath = new Path();
               }
 
               mPath.rewind();
               mPath.addRoundRect(
-                new RectF(left, top, right, bottom),
-                new float[]{
-                  Math.max(topLeftBorderRadius - borderWidth.left, 0),
-                  Math.max(topLeftBorderRadius - borderWidth.top, 0),
-                  Math.max(topRightBorderRadius - borderWidth.right, 0),
-                  Math.max(topRightBorderRadius - borderWidth.top, 0),
-                  Math.max(bottomRightBorderRadius - borderWidth.right, 0),
-                  Math.max(bottomRightBorderRadius - borderWidth.bottom, 0),
-                  Math.max(bottomLeftBorderRadius - borderWidth.left, 0),
-                  Math.max(bottomLeftBorderRadius - borderWidth.bottom, 0),
-                },
-                Path.Direction.CW);
+                      new RectF(left, top, right, bottom),
+                      new float[]{
+                              Math.max(topLeftBorderRadius - borderWidth.left, 0),
+                              Math.max(topLeftBorderRadius - borderWidth.top, 0),
+                              Math.max(topRightBorderRadius - borderWidth.right, 0),
+                              Math.max(topRightBorderRadius - borderWidth.top, 0),
+                              Math.max(bottomRightBorderRadius - borderWidth.right, 0),
+                              Math.max(bottomRightBorderRadius - borderWidth.bottom, 0),
+                              Math.max(bottomLeftBorderRadius - borderWidth.left, 0),
+                              Math.max(bottomLeftBorderRadius - borderWidth.bottom, 0),
+                      },
+                      Path.Direction.CW);
               canvas.clipPath(mPath);
               hasClipPath = true;
             }
@@ -1119,7 +1126,7 @@ public class ReactViewGroup extends ViewGroup
     float rotationY = getRotationY();
 
     boolean isFrontfaceVisible =
-      (rotationX >= -90.f && rotationX < 90.f) && (rotationY >= -90.f && rotationY < 90.f);
+            (rotationX >= -90.f && rotationX < 90.f) && (rotationY >= -90.f && rotationY < 90.f);
 
     if (isFrontfaceVisible) {
       setAlpha(mBackfaceOpacity);
@@ -1127,6 +1134,113 @@ public class ReactViewGroup extends ViewGroup
     }
 
     setAlpha(0);
+  }
+
+  public void setTVSelectable(boolean tvSelectable) {
+    if (this.tvSelectable != tvSelectable) {
+      this.tvSelectable = tvSelectable;
+      refreshFocusable();
+    }
+  }
+
+  public void setTVPreferredFocus(boolean hasTVPreferredFocus) {
+    this.tvPreferredFocus = hasTVPreferredFocus;
+    if (hasTVPreferredFocus) {
+      this.forceFocusable(true);
+      boolean gainedFocus = this.requestFocus();
+      if(!gainedFocus) {
+        this.forceFocusable(false);
+      }
+    } else {
+      this.refreshFocusable();
+    }
+  }
+
+  public void setTreeAlpha(float alpha) {
+    this.treeAlpha = alpha;
+  }
+
+  private float getAncestorsAlpha() {
+    float alpha = 1;
+    View v = this;
+    for (; ; ) {
+      ViewParent parent = v.getParent();
+      if (parent instanceof View) {
+        v = (View) parent;
+        alpha *= v.getAlpha();
+      } else {
+        break;
+      }
+    }
+    return alpha;
+  }
+
+  @Override
+  public void setAlpha(float alpha) {
+    super.setAlpha(alpha);
+    if(this.previousAlpha != alpha) {
+      updateThisAndChildrenFocusability(getAncestorsAlpha(), this);
+    }
+    this.previousAlpha = alpha;
+  }
+
+  private void updateThisAndChildrenFocusability(float parentAlpha, View v) {
+    float alpha = parentAlpha * v.getAlpha();
+    if (v instanceof ReactViewGroup) {
+      ((ReactViewGroup) v).setTreeAlpha(alpha);
+      ((ReactViewGroup) v).refreshFocusable();
+    }
+    if (v instanceof ViewGroup) {
+      ViewGroup vg = (ViewGroup) v;
+      for (int i = 0; i < vg.getChildCount(); i++) {
+        View child = vg.getChildAt(i);
+        updateThisAndChildrenFocusability(alpha, child);
+      }
+    }
+  }
+
+  private boolean canReceiveFocus() {
+    return (this.tvSelectable && this.treeAlpha > 0.001) || (this.isTVFocusGuide() && this.focusDestinations.length > 0);
+  }
+
+  private int focusableBoolToInt(boolean focusable) {
+    return focusable ? View.FOCUSABLE : View.NOT_FOCUSABLE;
+  }
+
+  private boolean focusableIntToBool(int focusable) {
+    return focusable == View.FOCUSABLE;
+  }
+
+
+  @Override
+  public void setFocusable(int _focusable) {
+    int focusable;
+    if(this.mForceFocusable) {
+      focusable = View.FOCUSABLE;
+    } else {
+      this.mFocusable = _focusable;
+      focusable = _focusable == View.FOCUSABLE && this.canReceiveFocus() ? View.FOCUSABLE : View.NOT_FOCUSABLE;
+    }
+    super.setFocusable(focusable);
+    this.setFocusableInTouchMode(focusableIntToBool(focusable));
+  }
+
+  @Override
+  public void setFocusable(boolean focusable) {
+    this.setFocusable(focusableBoolToInt(focusable));
+  }
+
+  private void refreshFocusable() {
+    this.setFocusable(this.mFocusable);
+  }
+
+  public void forceFocusable(boolean focusable) {
+    this.mForceFocusable = focusable;
+    if(focusable) {
+      this.setFocusable(true);
+    } else {
+      this.refreshFocusable();
+    }
   }
 
   private View findDestinationView() {
@@ -1142,8 +1256,15 @@ public class ReactViewGroup extends ViewGroup
   private static boolean requestFocusViewOrAncestor(View destination) {
     View v = destination;
     while (v != null) {
-      if (v.requestFocus()) {
+      if(v instanceof ReactViewGroup) {
+        ((ReactViewGroup) v).forceFocusable(true);
+      }
+      boolean gainedFocus = v.requestFocus();
+      if (gainedFocus) {
         return true;
+      }
+      if(v instanceof ReactViewGroup) {
+        ((ReactViewGroup) v).forceFocusable(false);
       }
       ViewParent parent = v.getParent();
       if (parent instanceof View) {
@@ -1246,6 +1367,9 @@ public class ReactViewGroup extends ViewGroup
 
   @Override
   protected void onFocusChanged(boolean gainFocus, int direction, @Nullable Rect previouslyFocusedRect) {
+    if(gainFocus) {
+      this.mForceFocusable = false;
+    }
     super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
   }
 
@@ -1304,9 +1428,9 @@ public class ReactViewGroup extends ViewGroup
      * This ensures that focus will always stay inside the container until trap gets disabled.
      */
     if ((trapFocusUp && direction == FOCUS_UP)
-      || (trapFocusDown && direction == FOCUS_DOWN)
-      || (trapFocusLeft && direction == FOCUS_LEFT)
-      || (trapFocusRight && direction == FOCUS_RIGHT)) {
+            || (trapFocusDown && direction == FOCUS_DOWN)
+            || (trapFocusLeft && direction == FOCUS_LEFT)
+            || (trapFocusRight && direction == FOCUS_RIGHT)) {
       return FocusFinder.getInstance().findNextFocus(this, focused, direction);
     }
 
@@ -1315,6 +1439,7 @@ public class ReactViewGroup extends ViewGroup
 
   public void setFocusDestinations(@NonNull int[] focusDestinations) {
     this.focusDestinations = focusDestinations;
+    this.refreshFocusable();
   }
 
   public void setAutoFocusTV(boolean autoFocus) {
